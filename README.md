@@ -21,10 +21,11 @@ The project status tracker is available at the following link:
 ## Uploaded Documents
 The following documents have been uploaded so far:
 1. **Moments of Meetings** (14/01/2025)  
-2. **Moments of Meetings** (22/01/2025)  
-3. **Finease Requirements Document**  
-4. **Finease NDA Agreement**  
-5. **Status Tracker**  
-6. **Finease Design Figma Slides**  
+2. **Moments of Meetings** (22/01/2025)
+3. **Moments of Meetings** (29/01/2025)
+4. **Finease Requirements Document**  
+5. **Finease NDA Agreement**  
+6. **Status Tracker**  
+7. **Finease Design Figma Slides**  
 
 For any further updates or access to additional resources, please refer to the status tracker or reach out to the project team.
