@@ -1,3 +1,6 @@
 # Ignore everything in this directory
 # Except this file
 !.gitignore
+/frontend/node_modules
+/backend/node_modules
+/backend/.env

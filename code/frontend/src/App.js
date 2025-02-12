@@ -5,7 +5,10 @@ import Dashboard from './components/Dashboard';
 import AuthPage from './components/AuthPage';
 import Navbar from './components/Navbar';
 import PasswordReset from './components/passwordReset';
-import ProfilePage from './components/ProfilePage';  // Add this import
+import ProfilePage from './components/ProfilePage';
+import ScanUpload from './components/ScanUpload'; // ✅ Fix import name
+import Scan from './components/Scan';
+import Invoice from './components/Invoice';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -77,12 +80,31 @@ function AppContent() {
           }
         />
         <Route
+          path="/upload" // ✅ Add this route for Scan.js
+          element={
+            <ProtectedRoute>
+              <ScanUpload />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+           path="/scan" element={
+           <ProtectedRoute>
+            <Scan />
+            </ProtectedRoute>
+            }
+        /> 
+        <Route
           path="/reset-password"
           element={
             <PublicRoute allowIfLoggedIn={true}>
               <PasswordReset />
             </PublicRoute>
           }
+        />
+        <Route
+         path="/invoice"
+          element={<Invoice />}
         />
         {/* Additional routes for profile-related pages */}
         {/* <Route

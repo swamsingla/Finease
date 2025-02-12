@@ -163,9 +163,9 @@ const ProfilePage = () => {
           />
           <NavItem 
             icon={<FileText className="w-5 h-5" />} 
-            label="Records" 
-            onClick={() => handleNavigation('/records')}
-            active={location.pathname === '/records'} 
+            label="Invoice" 
+            onClick={() => navigate('/invoice')}  // Redirect to invoice.js
+            active={location.pathname === '/invoice'} 
           />
         </div>
       </div>
