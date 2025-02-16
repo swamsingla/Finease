@@ -23,9 +23,14 @@ The following documents have been uploaded so far:
 1. **Moments of Meetings** (14/01/2025)  
 2. **Moments of Meetings** (22/01/2025)
 3. **Moments of Meetings** (29/01/2025)
-4. **Finease Requirements Document**  
-5. **Finease NDA Agreement**  
-6. **Status Tracker**  
-7. **Finease Design Figma Slides**  
+4. **Moments of Meetings** (08/02/2025)
+5. **Moments of Meetings** (16/02/2025)
+6. **Finease Requirements Document**  
+7. **Finease NDA Agreement**  
+8. **Status Tracker**  
+9. **Finease Design Figma Slides**
+10. **SRS(Software Requirements Specification)**
+11. **Project Plan**
+12. **Project Synopsis**
 
 For any further updates or access to additional resources, please refer to the status tracker or reach out to the project team.
