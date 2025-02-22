@@ -9,6 +9,8 @@ import ProfilePage from './components/ProfilePage';
 import ScanUpload from './components/ScanUpload'; // ✅ Fix import name
 import Scan from './components/Scan';
 import Invoice from './components/Invoice';
+import InvoiceFormat from "./components/InvoiceFormat";
+
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -94,6 +96,13 @@ function AppContent() {
             </ProtectedRoute>
             }
         /> 
+        <Route
+         path="/invoice-format" element={
+          <ProtectedRoute>
+          <InvoiceFormat />
+          </ProtectedRoute>
+         }
+        />
         <Route
           path="/reset-password"
           element={

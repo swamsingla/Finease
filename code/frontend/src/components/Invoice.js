@@ -13,16 +13,16 @@ const Invoice = () => {
 
       <Card 
         className="hover:bg-gray-100 transition-colors cursor-pointer mb-4"
-        onClick={() => navigate('/generate-invoice')}
-      >
+        onClick={() => navigate('/invoice-format')}  // Updated this line
+        >
         <CardContent className="p-6 flex items-center gap-4">
-          🧾
-          <div className="flex-1">
+            �
+            <div className="flex-1">
             <h3 className="font-medium">Generate Invoice</h3>
             <p className="text-sm text-gray-500">Create an invoice for your records</p>
-          </div>
+            </div>
         </CardContent>
-      </Card>
+        </Card>
 
       <Card 
         className="hover:bg-gray-100 transition-colors cursor-pointer"
