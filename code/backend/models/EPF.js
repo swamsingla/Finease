@@ -6,8 +6,7 @@ const epfSchema = new mongoose.Schema({
   establishmentId: { type: String, required: true },
   establishmentName: { type: String, required: true },
   wageMonth: { type: String, required: true },
-  // 'member' field can be an array if there are multiple subscribers
-  member: { type: [String], required: true },
+  member: { type: Number, required: true },
   totalAmount: { type: Number, required: true }
 }, { timestamps: true });
 

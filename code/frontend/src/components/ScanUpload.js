@@ -1,17 +1,22 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent } from '@mui/material';
-// import { Button } from '@mui/material';
 import { Camera, Upload, Home, Receipt, FileText } from 'lucide-react';
 
 const ScanUploadPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
+  const [fileURL, setFileURL] = useState(null);
+  const [isPDF, setIsPDF] = useState(false);
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
+      const url = URL.createObjectURL(file);
+      setFileURL(url);
+      setIsPDF(file.type === "application/pdf");
+
       // Redirect to scan page and pass file as state
       navigate('/scan', { state: { file } });
     }
@@ -33,10 +38,9 @@ const ScanUploadPage = () => {
       </Card>
       
       {/* Upload Files */}
-      <Card className="hover:bg-gray-50 transition-colors cursor-pointer mb-4" 
-        onClick={() => fileInputRef.current.click()}>
+      <Card className="hover:bg-gray-50 transition-colors cursor-pointer mb-4" onClick={() => fileInputRef.current.click()}>
         <CardContent className="p-6 flex items-center gap-4">
-          <Camera className="w-6 h-6 text-gray-600" />
+          <Upload className="w-6 h-6 text-gray-600" />
           <div className="flex-1">
             <h3 className="font-medium">Upload files</h3>
             <p className="text-sm text-gray-500">Upload files from your device</p>
@@ -47,11 +51,28 @@ const ScanUploadPage = () => {
       {/* Hidden File Input */}
       <input
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf"
         ref={fileInputRef}
         className="hidden"
         onChange={handleFileUpload}
       />
+
+      {/* Display Uploaded File */}
+        {fileURL && (
+          <div className="mt-4 border rounded-lg p-2 shadow-md">
+            {isPDF ? (
+              <iframe 
+                src={fileURL} 
+                width="100%" 
+                height="400px" 
+                className="rounded-md"
+                title="Uploaded PDF"
+              />
+            ) : (
+              <img src={fileURL} alt="Uploaded file" className="w-full h-auto rounded-md" />
+            )}
+          </div>
+        )}
       
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t">
@@ -77,7 +98,7 @@ const ScanUploadPage = () => {
           <NavItem 
             icon={<FileText className="w-5 h-5" />} 
             label="Invoice" 
-            onClick={() => navigate('/invoice')}  // Redirect to invoice.js
+            onClick={() => navigate('/invoice')}  
             active={location.pathname === '/invoice'} 
           />
         </div>

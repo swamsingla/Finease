@@ -8,6 +8,9 @@ import PasswordReset from './components/passwordReset';
 import ProfilePage from './components/ProfilePage';
 import ScanUpload from './components/ScanUpload'; // ✅ Fix import name
 import Scan from './components/Scan';
+import Epf from './components/Epf';
+import Gst from './components/Gst';
+import Itr from './components/Itr';
 import Invoice from './components/Invoice';
 import InvoiceFormat from "./components/InvoiceFormat";
 
@@ -96,6 +99,30 @@ function AppContent() {
             </ProtectedRoute>
             }
         /> 
+        <Route
+          path="/gst"
+          element={
+            <ProtectedRoute>
+              <Gst />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/itr"
+          element={
+            <ProtectedRoute>
+              <Itr />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/epf"
+          element={
+            <ProtectedRoute>
+              <Epf />
+            </ProtectedRoute>
+          }
+        />
         <Route
          path="/invoice-format" element={
           <ProtectedRoute>

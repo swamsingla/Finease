@@ -6,6 +6,9 @@ const connectDB = require('./config/database');
 
 const authRoutes = require('./routes/authRoutes');
 const classifyRoutes = require("./routes/classifyRoutes");
+const epfRoutes = require("./routes/epfroutes"); // Import EPF routes
+const gstRoutes = require("./routes/gstroutes");
+const itrRoutes = require("./routes/itrroutes");
 
 const app = express();
 
@@ -16,6 +19,13 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // ✅ Use the classify routes
 app.use("/api/classify", classifyRoutes);
+
+// ✅ Use the EPF routes
+app.use(epfRoutes);
+// ✅ Use the GST routes
+app.use(gstRoutes);
+// ✅ Use the ITR routes
+app.use(itrRoutes);
 
 // Routes
 app.use('/api/auth', authRoutes);
