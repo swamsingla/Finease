@@ -153,6 +153,14 @@ const GST = () => {
         >
           {loading ? "Submitting..." : "Submit"}
         </button>
+        {/* Back to Home Button */}
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="w-full bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded-md"
+        >
+          Back to Home
+        </button>
       </form>
     </div>
   );
