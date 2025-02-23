@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require("multer");
 const connectDB = require('./config/database');
+const invoiceRoutes = require('./routes/invoiceRoutes');
 
 const authRoutes = require('./routes/authRoutes');
 const classifyRoutes = require("./routes/classifyRoutes");
@@ -16,6 +17,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use('/api/invoice', invoiceRoutes);
 
 // ✅ Use the classify routes
 app.use("/api/classify", classifyRoutes);

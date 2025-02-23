@@ -12,7 +12,8 @@ import Epf from './components/Epf';
 import Gst from './components/Gst';
 import Itr from './components/Itr';
 import Invoice from './components/Invoice';
-import InvoiceFormat from "./components/InvoiceFormat";
+import InvoiceCreate from './components/invoice/InvoiceCreate';
+import EwayCreate from './components/ewaybill/EwayCreate';
 
 
 // Protected Route Component
@@ -123,13 +124,7 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-        <Route
-         path="/invoice-format" element={
-          <ProtectedRoute>
-          <InvoiceFormat />
-          </ProtectedRoute>
-         }
-        />
+        
         <Route
           path="/reset-password"
           element={
@@ -139,8 +134,28 @@ function AppContent() {
           }
         />
         <Route
-         path="/invoice"
-          element={<Invoice />}
+          path="/invoice"
+          element={
+            <ProtectedRoute>
+              <Invoice />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/invoice/create"
+          element={
+            <ProtectedRoute>
+              <InvoiceCreate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/invoice/ewayBill"
+          element={
+            <ProtectedRoute>
+              <EwayCreate />
+            </ProtectedRoute>
+          }
         />
         {/* Additional routes for profile-related pages */}
         {/* <Route

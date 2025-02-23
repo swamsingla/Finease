@@ -13,7 +13,7 @@ const Invoice = () => {
 
       <Card 
         className="hover:bg-gray-100 transition-colors cursor-pointer mb-4"
-        onClick={() => navigate('/invoice-format')}  // Updated this line
+        onClick={() => navigate('/invoice/create')}  // Updated this line
         >
         <CardContent className="p-6 flex items-center gap-4">
             �
@@ -26,7 +26,7 @@ const Invoice = () => {
 
       <Card 
         className="hover:bg-gray-100 transition-colors cursor-pointer"
-        onClick={() => navigate('/generate-ewaybill')}
+        onClick={() => navigate('/invoice/ewayBill')}  // Updated this lines
       >
         <CardContent className="p-6 flex items-center gap-4">
           📜
