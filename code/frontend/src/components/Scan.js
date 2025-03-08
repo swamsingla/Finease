@@ -7,9 +7,8 @@ import { Home, Receipt, Upload, FileText } from "lucide-react";
 const NavItem = ({ icon, label, onClick, active }) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center text-sm ${
-      active ? "text-blue-500" : "text-gray-700"
-    }`}
+    className={`flex flex-col items-center text-sm ${active ? "text-blue-500" : "text-gray-700"
+      }`}
   >
     {icon}
     <span>{label}</span>
