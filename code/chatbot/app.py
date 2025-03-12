@@ -187,14 +187,18 @@ def get_file_extension(content_type):
 def download_media(media_url, file_path):
     """Download media from Twilio with authentication"""
     try:
+        # Use the current working directory as the base path
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.join(base_path, file_path)
+        
         response = requests.get(media_url, auth=(account_sid, auth_token), stream=True)
         response.raise_for_status()  # Raises an error for bad responses
         
-        with open(file_path, 'wb') as f:
+        with open(full_path, 'wb') as f:
             for chunk in response.iter_content(1024):
                 f.write(chunk)
         
-        print(f"Downloaded file: {file_path}")
+        print(f"Downloaded file: {full_path}")
         return True
     except Exception as e:
         print(f"Error downloading media: {e}")
