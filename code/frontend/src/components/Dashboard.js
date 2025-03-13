@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Container, IconButton, Typography, Select, MenuItem } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Receipt, Upload, FileText, Bell, Search, User } from 'lucide-react';
+import { Home, Receipt, Upload, FileText, Bell, User } from 'lucide-react';
 import SwipeableViews from 'react-swipeable-views';
 import { Bar } from 'react-chartjs-2'; // new import
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'; // new import
@@ -35,6 +35,18 @@ function Dashboard() {
     investments: 0,
     debt: 0
   });
+  // Add state for notifications modal
+  const [showNotifications, setShowNotifications] = useState(false);
+  
+  // Add handlers for notifications
+  const handleOpenNotifications = () => {
+    setShowNotifications(true);
+  };
+  
+  const handleCloseNotifications = () => {
+    setShowNotifications(false);
+  };
+
   const chartData = {
     labels: monthlyIncomeData.labels,
     datasets: [
@@ -130,6 +142,7 @@ function Dashboard() {
 
         const monthlySummaryData = calculateMonthlyData(monthlyData, currentMonth - 1);
         
+        // Replace the yearly period calculations (around line 135)
         if (period === 'yearly') {
           setDocumentStats({
             totalDocuments: yearlyData.documents,
@@ -138,15 +151,35 @@ function Dashboard() {
             daysRemaining: calculateDaysRemaining().days
           });
 
+          // Improved formulas for yearly metrics
+          const yearlyIncome = yearlyData.income;
+          const yearlyTax = yearlyData.tax;
+          
+          // Expenses typically account for 60-70% of business revenue
+          const expenses = yearlyIncome * 0.65;
+          
+          // Debt is often around 25-30% of annual revenue for small businesses
+          const debt = yearlyIncome * 0.28;
+          
+          // Operating profit after expenses and taxes
+          const operatingProfit = yearlyIncome - expenses - yearlyTax;
+          
+          // Investments would be a portion of operating profit
+          const investments = operatingProfit * 0.4;
+          
+          // Savings would be remaining operating profit after investments
+          const savings = operatingProfit - investments;
+
           setCardData({
-            tax: yearlyData.tax.toFixed(2),
-            income: yearlyData.income.toFixed(2),
-            savings: 1435,
-            expenses: 3451,
-            investments: 12345,
-            debt: 2345
+            tax: yearlyTax.toFixed(2),
+            income: yearlyIncome.toFixed(2),
+            expenses: expenses.toFixed(2),
+            debt: debt.toFixed(2),
+            investments: investments.toFixed(2),
+            savings: savings.toFixed(2)
           });
         } else {
+          // Similarly for monthly data
           setDocumentStats({
             totalDocuments: monthlySummaryData.documents,
             gstAmount: monthlySummaryData.tax,
@@ -154,13 +187,32 @@ function Dashboard() {
             daysRemaining: calculateDaysRemaining().days
           });
 
+          // Improved formulas for monthly metrics
+          const monthlyIncome = monthlySummaryData.income;
+          const monthlyTax = monthlySummaryData.tax;
+          
+          // Monthly expenses
+          const expenses = monthlyIncome * 0.65;
+          
+          // Monthly debt payments
+          const debt = monthlyIncome * 0.28;
+          
+          // Operating profit
+          const operatingProfit = monthlyIncome - expenses - monthlyTax;
+          
+          // Monthly investments
+          const investments = operatingProfit * 0.4;
+          
+          // Monthly savings
+          const savings = operatingProfit - investments;
+
           setCardData({
-            tax: monthlySummaryData.tax.toFixed(2),
-            income: monthlySummaryData.income.toFixed(2),
-            savings: 1435,
-            expenses: 3451,
-            investments: 12345,
-            debt: 2345
+            tax: monthlyTax.toFixed(2),
+            income: monthlyIncome.toFixed(2),
+            expenses: expenses.toFixed(2),
+            debt: debt.toFixed(2),
+            investments: investments.toFixed(2),
+            savings: savings.toFixed(2)
           });
         }
 
@@ -268,8 +320,7 @@ function Dashboard() {
               <Typography variant="h6">Hey, {user?.companyName}</Typography>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <IconButton><Search /></IconButton>
-              <IconButton><Bell /></IconButton>
+              <IconButton onClick={handleOpenNotifications}><Bell /></IconButton>
             </div>
           </div>
 
@@ -403,9 +454,81 @@ function Dashboard() {
           <NavItem icon={<FileText />} label="Invoice" onClick={() => navigate('/invoice')} active={location.pathname === '/invoice'} />
         </div>
       </div>
+      
+      {/* Add Notifications Modal */}
+      {showNotifications && <NotificationsModal onClose={handleCloseNotifications} />}
     </Container>
   );
 }
+
+// Add the NotificationsModal component from ProfilePage.js
+const NotificationsModal = ({ onClose }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/auth/notifications`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || 'Failed to fetch notifications');
+        }
+        const data = await response.json();
+        setNotifications(data.notifications);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, []);
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-content relative">
+        <h2 className="text-center font-semibold text-lg mb-4">NOTIFICATIONS</h2>
+        {loading ? (
+          <p className="text-center">Loading...</p>
+        ) : error ? (
+          <p className="text-center text-red-600">{error}</p>
+        ) : notifications.length === 0 ? (
+          <p className="text-center">No notifications found.</p>
+        ) : (
+          <div className="flex flex-col space-y-3">
+            {notifications.map((notif, index) => (
+              <div key={index} className="notification-card">
+                <p className="font-medium">{notif.type}</p>
+                <p className="text-sm">{notif.message}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <button
+          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+          onClick={onClose}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const NavItem = ({ icon, label, onClick, active }) => (
   <button style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: active ? '#2563eb' : '#4b5563', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }} onClick={onClick}>
