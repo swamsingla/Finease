@@ -14,7 +14,7 @@ import Itr from './components/Itr';
 import Invoice from './components/Invoice';
 import InvoiceCreate from './components/invoice/InvoiceCreate';
 import EwayCreate from './components/ewaybill/EwayCreate';
-
+import FloatingChat from './components/FloatingChat'; // Import FloatingChat component
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -193,6 +193,7 @@ function AppContent() {
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {user && <FloatingChat />} {/* Add FloatingChat for authenticated users */}
     </div>
   );
 }

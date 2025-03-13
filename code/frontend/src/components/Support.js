@@ -15,8 +15,6 @@ const Support = () => {
     setLoading(true);
 
     try {
-      // TODO: Update the fetch URL to match your backend route and port
-      // If your backend is running at http://localhost:5000 and the route is /api/chatbot:
       const response = await fetch(
         `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/chatbot`,
         {
@@ -44,7 +42,7 @@ const Support = () => {
         ]);
       }
     } catch (error) {
-      console.error('Chatbot Error:', error); // Debug log
+      console.error('Chatbot Error:', error);
       setConversation((prev) => [
         ...prev,
         { sender: 'bot', text: 'Error connecting to support.' },
@@ -56,30 +54,63 @@ const Support = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4">
-      <h1 className="text-xl font-bold mb-4">Support Chat</h1>
-      <div className="border p-4 h-80 overflow-y-scroll mb-4 bg-gray-50">
+    <div className="max-w-md mx-auto">
+      <h1 className="text-xl font-bold mb-4 text-blue-700 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
+        TaxFile Support
+      </h1>
+      
+      <div className="border rounded-lg p-4 h-80 overflow-y-auto mb-4 bg-gray-50 shadow-inner">
+        {conversation.length === 0 && (
+          <div className="text-gray-500 italic text-center py-4">
+            Ask me anything about TaxFile services, tax filing, or how to use the platform!
+          </div>
+        )}
+        
         {conversation.map((msg, index) => (
           <div
             key={index}
-            className={`mb-2 ${msg.sender === 'bot' ? 'text-blue-600' : 'text-gray-800'}`}
+            className={`mb-3 p-2 rounded-lg ${
+              msg.sender === 'bot' 
+                ? 'bg-blue-100 text-blue-800 border-l-4 border-blue-500'
+                : 'bg-gray-200 text-gray-800 ml-8'
+            }`}
           >
-            <strong>{msg.sender === 'bot' ? 'Support Bot:' : 'You:'}</strong> {msg.text}
+            <div className="font-semibold">
+              {msg.sender === 'bot' ? 'Support Bot:' : 'You:'}
+            </div>
+            <div>{msg.text}</div>
           </div>
         ))}
-        {loading && <p className="text-gray-500">Generating response...</p>}
+        
+        {loading && (
+          <div className="flex items-center text-blue-600 p-2">
+            <div className="animate-bounce mr-2">●</div>
+            <div className="animate-bounce mr-2" style={{animationDelay: '0.2s'}}>●</div>
+            <div className="animate-bounce" style={{animationDelay: '0.4s'}}>●</div>
+          </div>
+        )}
       </div>
+      
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          className="flex-1 border p-2 rounded"
+          className="flex-1 border rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Ask your question..."
           required
         />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
-          Send
+        <button 
+          type="submit" 
+          className="bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors flex items-center"
+          disabled={loading}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+          </svg>
         </button>
       </form>
     </div>

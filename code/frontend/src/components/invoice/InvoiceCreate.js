@@ -1,10 +1,12 @@
 import React, { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
+import { useNavigate } from "react-router-dom";  // Make sure this is imported
 import InvoiceForm from "./InvoiceForm";
 import InvoiceTemplate from "./InvoiceTemplate";
 import axios from 'axios';
 
-function InvoiceCreate() {
+const InvoiceCreate = () => {
+  const navigate = useNavigate();
   const printRef = useRef(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -175,7 +177,7 @@ function InvoiceCreate() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto"> {/* Added wrapper div with mx-auto */}
         <h1 className="text-2xl font-bold mb-4 text-center">Invoice Generator</h1>
   
@@ -193,9 +195,19 @@ function InvoiceCreate() {
             data={invoiceData || formData} 
           />
         </div>
+        
+        {/* Back button */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => navigate('/invoice')}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-6 rounded-md transition-colors"
+          >
+            Back to Invoice Menu
+          </button>
+        </div>
       </div>
     </div>
   );
-}
+};
 
 export default InvoiceCreate;
