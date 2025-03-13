@@ -23,6 +23,28 @@ const Scan = () => {
   const [isPDF, setIsPDF] = useState(false);
   const [classification, setClassification] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [uploadedFromGallery, setUploadedFromGallery] = useState(false);
+
+  // Determine if this is an upload mode (came from ScanUpload page)
+  useEffect(() => {
+    if (location.state?.file) {
+      setCameraEnabled(false);
+      setUploadedFromGallery(true);
+      handleFile(location.state.file);
+    }
+  }, [location.state]);
+  
+  // Handle webcam cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Stop the webcam when component unmounts
+      if (webcamRef.current && webcamRef.current.stream) {
+        const tracks = webcamRef.current.stream.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   const handleFile = useCallback((file) => {
     const url = URL.createObjectURL(file);
@@ -31,21 +53,25 @@ const Scan = () => {
     classifyDocument(file);
   }, []);
 
-  useEffect(() => {
-    if (location.state?.file) {
-      handleFile(location.state.file);
-    }
-  }, [location.state, handleFile]);
-
   const capture = () => {
-    const imageSrc = webcamRef.current.getScreenshot();
-    const file = dataURLtoFile(imageSrc, "scanned_document.png");
-    handleFile(file);
+    if (webcamRef.current && webcamRef.current.getScreenshot) {
+      const imageSrc = webcamRef.current.getScreenshot();
+      if (imageSrc) {
+        const file = dataURLtoFile(imageSrc, "scanned_document.png");
+        handleFile(file);
+      } else {
+        console.error("Failed to capture screenshot");
+        alert("Camera access issue. Please reload the page and allow camera access.");
+      }
+    }
   };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    if (file) handleFile(file);
+    if (file) {
+      setUploadedFromGallery(true);
+      handleFile(file);
+    }
   };
 
   const classifyDocument = async (file) => {
@@ -64,6 +90,7 @@ const Scan = () => {
       setClassification(data.classification);
     } catch (error) {
       console.error("Error:", error);
+      alert("Failed to classify document. Please try again.");
     }
     setLoading(false);
   };
@@ -81,34 +108,60 @@ const Scan = () => {
     return new File([u8arr], filename, { type: mime });
   }
 
+  // Reset state to clear current capture and return to camera mode
+  const resetCapture = () => {
+    setCapturedFile(null);
+    setClassification(null);
+    setUploadedFromGallery(false);
+    setCameraEnabled(true);
+  };
+
   return (
     <div className="flex flex-col items-center justify-between min-h-screen bg-white text-black p-4 pb-24">
-      <h2 className="text-2xl font-bold mb-4">Scan or Upload Document</h2>
+      <h2 className="text-2xl font-bold mb-4">
+        {uploadedFromGallery ? "Document Preview" : "Scan or Upload Document"}
+      </h2>
 
       <div className="relative w-80 h-96 border-4 border-gray-400 rounded-lg overflow-hidden shadow-lg">
         {capturedFile ? (
-          isPDF ? (
-            <iframe
-              src={capturedFile}
-              width="100%"
-              height="100%"
-              className="rounded-md"
-              title="Scanned Document Preview"
-            />
-          ) : (
-            <img
-              src={capturedFile}
-              alt="Captured"
-              className="w-full h-full object-cover"
-            />
-          )
-        ) : (
+          <>
+            {isPDF ? (
+              <iframe
+                src={capturedFile}
+                width="100%"
+                height="100%"
+                className="rounded-md"
+                title="Scanned Document Preview"
+              />
+            ) : (
+              <img
+                src={capturedFile}
+                alt="Captured"
+                className="w-full h-full object-cover"
+              />
+            )}
+            {/* Add a reset button to clear capture and return to camera */}
+            {!uploadedFromGallery && (
+              <button 
+                onClick={resetCapture}
+                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 text-xs"
+              >
+                Back to Camera
+              </button>
+            )}
+          </>
+        ) : cameraEnabled ? (
           <div className="relative w-full h-full">
             <Webcam
               audio={false}
               ref={webcamRef}
               screenshotFormat="image/png"
               className="w-full h-full object-cover"
+              videoConstraints={{
+                width: 320,
+                height: 380,
+                facingMode: "environment" // Use rear camera if available
+              }}
             />
             <motion.div
               className="absolute top-0 left-0 w-full h-full"
@@ -118,16 +171,20 @@ const Scan = () => {
               <div className="w-full h-2 bg-blue-500 opacity-70" />
             </motion.div>
           </div>
+        ) : (
+          <div className="flex items-center justify-center h-full bg-gray-100">
+            <p className="text-gray-500">Camera disabled. Upload a document instead.</p>
+          </div>
         )}
       </div>
 
-      {loading && <p>Classifying document...</p>}
+      {loading && <p className="mt-4 text-blue-500 animate-pulse">Classifying document...</p>}
 
       {/* Show classification and extracted date */}
       {classification && (
         <div className="mt-4 text-center">
           <p className="text-lg">📄 Document Type: <b>{classification}</b></p>
-          {/* Show a button to navigate to epf.js if classification is "PF Filing" */}
+          
           {classification === "PF Filing" && (
             <button
               onClick={() => navigate("/epf", { state: { file: capturedFile } })}
@@ -168,12 +225,15 @@ const Scan = () => {
           />
         </label>
 
-        <button
-          onClick={capture}
-          className="bg-red-600 hover:bg-red-800 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300"
-        >
-          📸 Capture
-        </button>
+        {/* Only show capture button if not in upload mode */}
+        {!uploadedFromGallery && cameraEnabled && !capturedFile && (
+          <button
+            onClick={capture}
+            className="bg-red-600 hover:bg-red-800 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300"
+          >
+            📸 Capture
+          </button>
+        )}
 
         <label className="text-center bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-md cursor-pointer">
           🖼 Gallery
