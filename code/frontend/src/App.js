@@ -77,6 +77,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route 
+          path="/file" 
+          element={
+            <ProtectedRoute>
+              <File />
+            </ProtectedRoute>
+        } 
+        />
         <Route
           path="/auth"
           element={

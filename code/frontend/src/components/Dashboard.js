@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 import { Container, IconButton, Typography, Select, MenuItem } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Receipt, Upload, FileText, Bell, Search, User } from 'lucide-react';
@@ -8,6 +10,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend); // register scales
 
 function Dashboard() {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeIndex, setActiveIndex] = useState(0); // Track the active slide index
@@ -15,14 +18,28 @@ function Dashboard() {
   const [period, setPeriod] = useState("yearly"); // New state for period
   const [monthlyIncomeData, setMonthlyIncomeData] = useState({
     labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-    values: Array.from({ length: 12 }, () => Math.floor(Math.random() * 10000))
+    values: Array(12).fill(0) // Start with zeros instead of random values
   });
-  
+  const [isLoading, setIsLoading] = useState(true);
+  const [documentStats, setDocumentStats] = useState({
+    totalDocuments: 0,
+    gstAmount: 0,
+    potentialSavings: 0,
+    daysRemaining: 0
+  });
+  const [cardData, setCardData] = useState({
+    tax: 0,
+    income: 0,
+    savings: 0,
+    expenses: 0,
+    investments: 0,
+    debt: 0
+  });
   const chartData = {
     labels: monthlyIncomeData.labels,
     datasets: [
       {
-        label: 'Monthly Income',
+        label: period === 'yearly' ? 'Monthly Income (₹)' : 'Income This Month (₹)',
         data: monthlyIncomeData.values,
         backgroundColor: 'rgba(37, 99, 235, 1)',
         borderWidth: 1
@@ -30,20 +47,206 @@ function Dashboard() {
     ]
   };
 
+  // Use Effect Hook
   useEffect(() => {
-    // Simulated fetch call to get total net income
-    fetch(`/api/net-income?period=${period}`) // Updated fetch endpoint to include period
-      .then(response => response.json())
-      .then(data => setNetIncome(data.netIncome))
-      .catch(error => console.error("Error fetching net income:", error));
-  }, [period]); // Added dependency
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        // Get the current year for yearly data filtering
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1; // API expects 1-12
 
+        // Get the auth token from localStorage
+        const token = localStorage.getItem('token');
+        // Set up the authorization header
+        const config = {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          params: {}
+        };
+
+        // Fetch stats based on period (monthly or yearly)
+        config.params = period === 'monthly' ?
+          { year: currentYear, month: currentMonth } :
+          { year: currentYear };
+
+        const statsResponse = await axios.get(
+          `http://localhost:5000/api/dashboard/document-statistics`,
+          config
+        );
+
+        // Fetch monthly data for charts with same auth header
+        const chartResponse = await axios.get(
+          `http://localhost:5000/api/dashboard/monthly-data`,
+          {
+            ...config,
+            params: { year: currentYear }
+          }
+        );
+
+        // Rest of your code remains the same
+        console.log('Stats response:', statsResponse.data);
+        console.log('Chart response:', chartResponse.data);
+
+        // Process stats data with proper structure handling
+        const statsData = statsResponse.data.statistics;
+        const financials = statsData.financials;
+        const byType = statsData.byType;
+
+        // Process Information from chartResponse.monthlyData
+        const monthlyData = chartResponse.data.monthlyData.data;
+        console.log('Monthly data:', monthlyData);
+        const calculateYearlyData = (monthlyData) => {
+          let totalTax = 0;
+          let totalIncome = 0;
+          let totalDocuments = 0;
+
+          monthlyData.amounts.forEach(month => {
+            totalIncome += month;
+          });
+          monthlyData.taxes.forEach(month => {
+            totalTax += month;
+          });
+          monthlyData.totalCounts.forEach(month => {
+            totalDocuments += month;
+          });
+
+          return { tax: totalTax, income: totalIncome, documents: totalDocuments };
+        };
+
+        const yearlyData = calculateYearlyData(monthlyData);
+        console.log('Yearly data:', yearlyData);
+
+
+        // Create a dictionary with amounts, taxes, and totalCounts
+        const calculateMonthlyData = (monthlyData,index) => {
+          let totalTax = monthlyData.taxes[index];
+          let totalIncome = monthlyData.amounts[index];
+          let totalDocuments = monthlyData.totalCounts[index];
+          return { tax: totalTax, income: totalIncome, documents: totalDocuments };
+        };
+        console.log('Monthly Summary:', calculateMonthlyData(monthlyData, currentMonth - 1));
+
+        const monthlySummaryData = calculateMonthlyData(monthlyData, currentMonth - 1);
+        
+        if (period === 'yearly') {
+          setDocumentStats({
+            totalDocuments: yearlyData.documents,
+            gstAmount: yearlyData.tax,
+            potentialSavings: yearlyData.tax * 0.1,
+            daysRemaining: calculateDaysRemaining().days
+          });
+
+          setCardData({
+            tax: yearlyData.tax.toFixed(2),
+            income: yearlyData.income.toFixed(2),
+            savings: 1435,
+            expenses: 3451,
+            investments: 12345,
+            debt: 2345
+          });
+        } else {
+          setDocumentStats({
+            totalDocuments: monthlySummaryData.documents,
+            gstAmount: monthlySummaryData.tax,
+            potentialSavings: monthlySummaryData.tax * 0.1,
+            daysRemaining: calculateDaysRemaining().days
+          });
+
+          setCardData({
+            tax: monthlySummaryData.tax.toFixed(2),
+            income: monthlySummaryData.income.toFixed(2),
+            savings: 1435,
+            expenses: 3451,
+            investments: 12345,
+            debt: 2345
+          });
+        }
+
+        // Set net income from the correct location
+        setNetIncome(yearlyData.income.toFixed(2));
+
+        // Process chart data properly from the API response
+        if (chartResponse.data?.monthlyData) {
+          const monthlyData = chartResponse.data.monthlyData;
+          setMonthlyIncomeData({
+            labels: monthlyData.labels || ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+            values: monthlyData.data.amounts
+          });
+        }
+      }
+      catch (error) {
+        console.error("Error fetching dashboard data:", error);
+
+        // If we get a 401, the token might be expired - handle auth error
+        if (error.response && error.response.status === 401) {
+          console.log("Authentication error - you might need to log in again");
+          // Optional: Redirect to login page
+          // navigate('/login');
+        }
+
+        // Set placeholder data for the UI to avoid crashes
+        setMonthlyIncomeData({
+          labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+          values: Array(12).fill(0)
+        });
+
+        setDocumentStats({
+          totalDocuments: 0,
+          totalGenerated: 0,
+          totalUploaded: 0,
+          gstAmount: 0,
+          potentialSavings: 0,
+          daysRemaining: calculateDaysRemaining().days
+        });
+
+        setCardData({
+          tax: "0.00",
+          income: "0.00",
+          savings: "0.00",
+          expenses: "0.00",
+          investments: "0.00",
+          debt: "0.00"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [period]);
+
+  // Dashboard stats
   const dashboardStats = [
-    'Total GST Saved in comparison to last year: ₹12,345',
-    'Total Bills Uploaded: 45 this financial year',
-    'Potential Savings: ₹8,765 based on your filings',
-    'Days Remaining: 28 to file your taxes'
+    `Total GST: ₹${(documentStats.gstAmount || 0).toFixed(2)} ${period === 'yearly' ? 'this year' : 'this month'}`,
+    `Total Documents: ${documentStats.totalDocuments || 0}`,
+    `Potential Savings: ₹${(documentStats.potentialSavings || 0).toFixed(2)} based on your filings`,
+    `Days Remaining: ${documentStats.daysRemaining || 0} until July 31st tax filing deadline`
   ];
+
+  // Replace the calculateDaysRemaining function
+  const calculateDaysRemaining = () => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+
+    // Set the tax filing deadline to July 31st of the current year
+    const filingDeadline = new Date(currentYear, 6, 31); // July 31st (month is 0-indexed)
+
+    // If today is already past July 31st, set deadline to next year
+    if (today > filingDeadline) {
+      filingDeadline.setFullYear(currentYear + 1);
+    }
+
+    // Calculate days difference
+    const diffTime = filingDeadline - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return {
+      days: diffDays > 0 ? diffDays : 0,
+      filingDate: filingDeadline
+    };
+  };
 
   const handleChangeIndex = (index) => {
     setActiveIndex(index); // Update the active index when the slide changes
@@ -51,105 +254,146 @@ function Dashboard() {
 
   return (
     <Container maxWidth="lg" style={{ paddingBottom: '80px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <IconButton onClick={() => navigate('/profile')}><User /></IconButton>
-          <Typography variant="h6">Hey, Kushagra</Typography>
+      {isLoading && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '50px 0' }}>
+          <Typography>Loading dashboard data...</Typography>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <IconButton><Search /></IconButton>
-          <IconButton><Bell /></IconButton>
-        </div>
-      </div>
+      )}
 
+      {!isLoading && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <IconButton onClick={() => navigate('/profile')}><User /></IconButton>
+              <Typography variant="h6">Hey, {user?.companyName}</Typography>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <IconButton><Search /></IconButton>
+              <IconButton><Bell /></IconButton>
+            </div>
+          </div>
 
+          {/* Swipeable Views */}
+          <SwipeableViews enableMouseEvents index={activeIndex} onChangeIndex={handleChangeIndex}>
+            {dashboardStats.map((stat, index) => (
+              <div
+                key={index}
+                style={{
+                  background: 'black',
+                  color: 'white',
+                  padding: '8px',
+                  textAlign: 'center',
+                  borderRadius: '2px',
+                  margin: '16px 0',
+                  height: '80px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Typography variant="h6" style={{ fontWeight: 'bold' }}>
+                  {stat}
+                </Typography>
+              </div>
+            ))}
+          </SwipeableViews>
+          {/* Indicator Dots */}
+          <div style={{ textAlign: 'center', marginTop: '10px' }}>
+            {dashboardStats.map((_, index) => (
+              <span
+                key={index}
+                style={{
+                  height: '10px',
+                  width: '10px',
+                  margin: '0 5px',
+                  backgroundColor: activeIndex === index ? '#2563eb' : '#e0e0e0',
+                  borderRadius: '50%',
+                  display: 'inline-block',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setActiveIndex(index)}
+              ></span>
+            ))}
+          </div>
+          {/* New period selection */}
+          <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+            <Select value={period} onChange={(e) => setPeriod(e.target.value)}>
+              <MenuItem value="monthly">Monthly</MenuItem>
+              <MenuItem value="yearly">Yearly</MenuItem>
+            </Select>
+          </div>
+          {/* New Total Net Income Section */}
+          <div style={{ background: '#f1f5f9', padding: '12px', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}>
+            <Typography variant="h6">
+              Total Business Volume ({period}): ₹{netIncome}
+            </Typography>
+          </div>
+          {/* New Monthly Income Bar Graph */}
+          <div style={{ marginBottom: '32px', height: '400px' }}>
+            <Bar
+              data={chartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  title: {
+                    display: true,
+                    text: period === 'yearly' ? 'Monthly Income Distribution' : 'Current Month Income',
+                    font: {
+                      size: 16
+                    }
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function (context) {
+                        return '₹ ' + context.parsed.y.toLocaleString();
+                      }
+                    }
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: function (value) {
+                        return '₹' + value.toLocaleString();
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+          {/* New Scrollable Placards Section */}
+          <div style={{ display: 'flex', overflowX: 'auto', gap: '16px', padding: '16px 0' }}>
+            <div style={{ minWidth: '200px', backgroundColor: '#D1E8E2', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
+              <Typography variant="subtitle1">Tax (GST)</Typography>
+              <Typography variant="h6">₹{cardData.tax}</Typography>
+            </div>
+            <div style={{ minWidth: '200px', backgroundColor: '#A9D6E5', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
+              <Typography variant="subtitle1">Income</Typography>
+              <Typography variant="h6">₹{cardData.income}</Typography>
+            </div>
+            <div style={{ minWidth: '200px', backgroundColor: '#E2E2E2', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
+              <Typography variant="subtitle1">Savings</Typography>
+              <Typography variant="h6">₹{cardData.savings}</Typography>
+            </div>
+            <div style={{ minWidth: '200px', backgroundColor: '#D1E8E2', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
+              <Typography variant="subtitle1">Expenses</Typography>
+              <Typography variant="h6">₹{cardData.expenses}</Typography>
+            </div>
+            <div style={{ minWidth: '200px', backgroundColor: '#A9D6E5', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
+              <Typography variant="subtitle1">Investments</Typography>
+              <Typography variant="h6">₹{cardData.investments}</Typography>
+            </div>
+            <div style={{ minWidth: '200px', backgroundColor: '#E2E2E2', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
+              <Typography variant="subtitle1">Debt</Typography>
+              <Typography variant="h6">₹{cardData.debt}</Typography>
+            </div>
+          </div>
+        </>
+      )}
 
-{/* Swipeable Views */}
-<SwipeableViews enableMouseEvents index={activeIndex} onChangeIndex={handleChangeIndex}>
-  {dashboardStats.map((stat, index) => (
-    <div
-      key={index}
-      style={{
-        background: 'black',
-        color: 'white',
-        padding: '8px',             // Reduced padding
-        textAlign: 'center',
-        borderRadius: '2px',        // Even more rectangular shape
-        margin: '16px 0',
-        height: '80px',             // Smaller height, similar to the placards
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
-      <Typography variant="h6" style={{ fontWeight: 'bold' }}>
-        {stat}
-      </Typography>
-    </div>
-  ))}
-</SwipeableViews>
-      {/* Indicator Dots */}
-      <div style={{ textAlign: 'center', marginTop: '10px' }}>
-        {dashboardStats.map((_, index) => (
-          <span
-            key={index}
-            style={{
-              height: '10px',
-              width: '10px',
-              margin: '0 5px',
-              backgroundColor: activeIndex === index ? '#2563eb' : '#e0e0e0',
-              borderRadius: '50%',
-              display: 'inline-block',
-              cursor: 'pointer'
-            }}
-            onClick={() => setActiveIndex(index)} // Change slide on dot click
-          ></span>
-        ))}
-      </div>
-      {/* New period selection */}
-      <div style={{ textAlign: 'right', marginBottom: '16px' }}>
-        <Select value={period} onChange={(e) => setPeriod(e.target.value)}>
-          <MenuItem value="monthly">Monthly</MenuItem>
-          <MenuItem value="yearly">Yearly</MenuItem>
-        </Select>
-      </div>
-      {/* New Total Net Income Section */}
-      <div style={{ background: '#f1f5f9', padding: '12px', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}>
-        <Typography variant="h6">
-          Net Income ({period}): ₹{netIncome}
-        </Typography>
-      </div>
-      {/* New Monthly Income Bar Graph */}
-      <div style={{ marginBottom: '32px', height: '400px' }}>
-        <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: false }} />
-      </div>
-      {/* New Scrollable Placards Section */}
-      <div style={{ display: 'flex', overflowX: 'auto', gap: '16px', padding: '16px 0' }}>
-        <div style={{ minWidth: '200px', backgroundColor: '#D1E8E2', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
-          <Typography variant="subtitle1">Tax</Typography>
-          <Typography variant="h6">₹12,000</Typography>
-        </div>
-        <div style={{ minWidth: '200px', backgroundColor: '#A9D6E5', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
-          <Typography variant="subtitle1">Income</Typography>
-          <Typography variant="h6">₹50,000</Typography>
-        </div>
-        <div style={{ minWidth: '200px', backgroundColor: '#E2E2E2', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
-          <Typography variant="subtitle1">Savings</Typography>
-          <Typography variant="h6">₹8,000</Typography>
-        </div>
-        <div style={{ minWidth: '200px', backgroundColor: '#D1E8E2', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
-          <Typography variant="subtitle1">Expenses</Typography>
-          <Typography variant="h6">₹30,000</Typography>
-        </div>
-        <div style={{ minWidth: '200px', backgroundColor: '#A9D6E5', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
-          <Typography variant="subtitle1">Investments</Typography>
-          <Typography variant="h6">₹20,000</Typography>
-        </div>
-        <div style={{ minWidth: '200px', backgroundColor: '#E2E2E2', padding: '12px', borderRadius: '8px', flexShrink: 0 }}>
-          <Typography variant="subtitle1">Debt</Typography>
-          <Typography variant="h6">₹15,000</Typography>
-        </div>
-      </div>
       {/* Bottom Navigation Bar */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'white', borderTop: '1px solid #e0e0e0' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', padding: '16px' }}>
