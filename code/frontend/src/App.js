@@ -15,6 +15,7 @@ import Invoice from './components/Invoice';
 import InvoiceCreate from './components/invoice/InvoiceCreate';
 import EwayCreate from './components/ewaybill/EwayCreate';
 import FloatingChat from './components/FloatingChat'; // Import FloatingChat component
+import File from './components/File'; // ✅ Fix import name
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
