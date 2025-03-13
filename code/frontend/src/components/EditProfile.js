@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-const EditProfile = () => {
-  const { user, login } = useAuth(); // reuse "login" to update the context
+const EditProfile = ({ onClose }) => {
+  const { user, login } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
@@ -16,7 +16,6 @@ const EditProfile = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Pre-fill the form with current user data
   useEffect(() => {
     if (user) {
       setFormData({
@@ -27,7 +26,6 @@ const EditProfile = () => {
     }
   }, [user]);
 
-  // Handle input changes
   const handleChange = (e) => {
     setFormData(prev => ({
       ...prev,
@@ -35,14 +33,13 @@ const EditProfile = () => {
     }));
   };
 
-  // Handle form submission (API call included here)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token'); // assuming token is stored at login
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/auth/update`, {
         method: 'PUT',
         headers: {
@@ -56,10 +53,16 @@ const EditProfile = () => {
         throw new Error(errData.error || 'Update failed');
       }
       const data = await response.json();
-      // Update AuthContext and localStorage with the new user data
       login(data.user, token);
       setSuccess('Profile updated successfully!');
-      setTimeout(() => navigate('/profile'), 1500);
+      // If onClose prop is provided, close the modal; otherwise navigate
+      setTimeout(() => {
+        if (onClose) {
+          onClose();
+        } else {
+          navigate('/profile');
+        }
+      }, 1500);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -73,7 +76,6 @@ const EditProfile = () => {
       {error && <div className="alert-error">{error}</div>}
       {success && <div className="alert-success">{success}</div>}
       <form onSubmit={handleSubmit} className="edit-profile-form">
-        {/* Email Field */}
         <div className="form-group">
           <label className="form-label">Email</label>
           <input
@@ -86,7 +88,6 @@ const EditProfile = () => {
             placeholder="Enter your email"
           />
         </div>
-        {/* Company Name Field */}
         <div className="form-group">
           <label className="form-label">Company Name</label>
           <input
@@ -98,7 +99,6 @@ const EditProfile = () => {
             placeholder="Enter company name"
           />
         </div>
-        {/* GSTIN Field */}
         <div className="form-group">
           <label className="form-label">GSTIN</label>
           <input
@@ -111,7 +111,6 @@ const EditProfile = () => {
             placeholder="Enter GSTIN"
           />
         </div>
-        {/* Save Button */}
         <button
           type="submit"
           disabled={loading}

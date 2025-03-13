@@ -1,0 +1,89 @@
+**Help & FAQ**
+
+---
+
+**Welcome to TaxFile Support**
+
+Welcome to TaxFile—the platform designed to simplify tax filing, invoice management, and financial reporting. This document provides answers to frequently asked questions and guides you through the main features of our website.
+
+---
+
+**1. Getting Started**
+
+- **How do I create an account?**  
+  To create an account, click on the “Sign Up” button on the homepage and follow the registration process. Enter your basic information, verify your email, and set a secure password.
+
+- **How do I log in?**  
+  Once you have an account, click the “Login” button and enter your credentials. If you forget your password, use the “Forgot Password” link to reset it.
+
+---
+
+**2. Tax Filing**
+
+- **What tax filing services are available?**  
+  Our platform allows you to file your taxes quickly and securely. You can upload your necessary documents, fill in required forms, and submit your tax filings online.
+
+- **How do I file taxes?**  
+  Navigate to the “File” section from your dashboard. Follow the step-by-step instructions, upload your documents as prompted, and review your filing summary before submission.
+
+---
+
+**3. Invoice Uploading**
+
+- **How do I create invoices?**  
+  Go to the "Invoice" section on the website. Select the invoice files from your computer (supported formats: PDF, JPG, PNG) or click on "Scan Document" to scan hardcopies using your device camera and click “Submit.” Your invoice will be processed.
+
+- **What if an invoice fails to upload?**  
+  Check your internet connection and file format. If the problem persists, try again later or contact support for assistance.
+
+---
+
+**4. Financial Reporting**
+
+- **What financial reports are available?**  
+  TaxFile provides detailed financial reports, including summaries of tax filings, invoice histories, and expenditure tracking. These reports help you manage your finances more efficiently.
+
+- **How do I access my reports?**  
+Your reports are available on the home page of the website. You can either refer to the graphs or use the sliding window to go through your reports.
+
+- **Can I customize the reports?**  
+  Yes, you can filter and sort reports based on date, type of filing, or invoice status to view the most relevant information.
+
+---
+
+**5. Tax Filing**
+- **How to file taxes?**
+Click on the "File" button on the navigation bar and click on the tax name you want to file."
+
+---
+
+**6. Additional Features**
+
+- **What support channels are available?**  
+  If you have questions or need assistance, click the “Support” button on your dashboard to chat with our support bot. Alternatively, you can email us at support@taxfile.com.
+
+- **How do I update my profile information?**  
+  Navigate to the “Profile” section and click “Edit Profile.” Here you can update your contact information, company details (for business accounts), and other settings.
+
+---
+
+**7. Troubleshooting**
+
+- **Why is my document upload failing?**  
+  Ensure that your file meets the supported format and size criteria. If the problem continues, clear your browser cache and try again.
+
+- **What should I do if the system displays an error message?**  
+  Note down the error message and try refreshing the page. If the error persists, contact our support team with the details so we can assist you promptly.
+
+---
+
+**8. Contact Us**
+
+If you need further help or have feedback, please contact our support team:  
+**Email:** support@taxfile.com  
+**Phone:** [Your Support Number]
+
+Thank you for choosing TaxFile. We’re here to help make managing your taxes and finances as simple as possible.
+
+
+

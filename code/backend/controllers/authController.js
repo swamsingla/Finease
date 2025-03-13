@@ -71,3 +71,31 @@ exports.login = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+// In authController.js
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { email, companyName, gstin } = req.body;
+    // req.user is set by your auth middleware
+    const user = req.user;
+    if (email) user.email = email;
+    if (companyName !== undefined) user.companyName = companyName;
+    if (gstin !== undefined) user.gstin = gstin;
+    
+    await user.save();
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        companyName: user.companyName,
+        gstin: user.gstin,
+        createdAt: user.createdAt,
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};

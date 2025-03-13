@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Card, CardContent } from '@mui/material';
-import { Button } from '@mui/material';
+import { Card, CardContent, Button } from '@mui/material';
 import { 
   Bell, 
   Lock, 
@@ -17,11 +16,20 @@ import {
   Mail,
   Clock
 } from 'lucide-react';
+import EditProfile from './EditProfile'; // Import the EditProfile component
+import Support from './Support';
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // State to control the notifications modal (unchanged)
+  const [showNotifications, setShowNotifications] = useState(false);
+  // New state to control the Edit Profile modal popup
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  // New state for Support modal
+  const [showSupport, setShowSupport] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -34,6 +42,36 @@ const ProfilePage = () => {
 
   const handleNavigation = (path) => {
     navigate(path);
+  };
+
+  // Open the notifications modal
+  const handleOpenNotifications = () => {
+    setShowNotifications(true);
+  };
+
+  // Close the notifications modal
+  const handleCloseNotifications = () => {
+    setShowNotifications(false);
+  };
+
+  // Open the Edit Profile modal
+  const handleOpenEditProfile = () => {
+    setShowEditProfile(true);
+  };
+
+  // Close the Edit Profile modal
+  const handleCloseEditProfile = () => {
+    setShowEditProfile(false);
+  };
+
+  // Open the Support modal
+  const handleOpenSupport = () => {
+    setShowSupport(true);
+  };
+
+  // Close the Support modal
+  const handleCloseSupport = () => {
+    setShowSupport(false);
   };
 
   // Format date to readable string
@@ -69,7 +107,8 @@ const ProfilePage = () => {
                 </>
               )}
             </div>
-            <Button variant="outlined" className="text-blue-600" onClick={() => handleNavigation('/edit-profile')}>
+            {/* Instead of navigating to /edit-profile, we open the modal */}
+            <Button variant="outlined" className="text-blue-600" onClick={handleOpenEditProfile}>
               Edit Profile
             </Button>
           </div>
@@ -88,7 +127,6 @@ const ProfilePage = () => {
             )}
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-gray-500" />
-              {/* {console.log(user)} */}
               <span className="text-sm text-gray-600">Member since {formatDate(user?.createdAt)}</span>
             </div>
           </div>
@@ -101,7 +139,7 @@ const ProfilePage = () => {
           icon={<Bell className="w-5 h-5" />} 
           title="Notifications" 
           subtitle="Manage your notifications"
-          onClick={() => handleNavigation('/notifications')} 
+          onClick={handleOpenNotifications} 
         />
         
         <MenuCard 
@@ -115,7 +153,7 @@ const ProfilePage = () => {
           icon={<Phone className="w-5 h-5" />} 
           title="Contact Us" 
           subtitle="support@taxfile.com"
-          onClick={() => window.location.href = 'mailto:support@taxfile.com'} 
+          onClick={() => (window.location.href = 'mailto:support@taxfile.com')} 
         />
         
         <MenuCard 
@@ -129,7 +167,7 @@ const ProfilePage = () => {
           icon={<HelpCircle className="w-5 h-5" />} 
           title="Support" 
           subtitle="Need help?"
-          onClick={() => handleNavigation('/support')} 
+          onClick={handleOpenSupport}
         />
         
         <MenuCard 
@@ -164,11 +202,54 @@ const ProfilePage = () => {
           <NavItem 
             icon={<FileText className="w-5 h-5" />} 
             label="Invoice" 
-            onClick={() => navigate('/invoice')}  // Redirect to invoice.js
+            onClick={() => navigate('/invoice')}
             active={location.pathname === '/invoice'} 
           />
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {showEditProfile && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <EditProfile onClose={handleCloseEditProfile} />
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              onClick={handleCloseEditProfile}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Modal */}
+      {showNotifications && <NotificationsModal onClose={handleCloseNotifications} />}
+
+      {/* Support Modal */}
+      {showSupport && (
+        <div className="modal-backdrop">
+          <div className="modal-content relative">
+            <Support />
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              onClick={handleCloseSupport}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -176,9 +257,7 @@ const ProfilePage = () => {
 const MenuCard = ({ icon, title, subtitle, onClick }) => (
   <Card className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={onClick}>
     <CardContent className="p-4 flex items-center gap-4">
-      <div className="text-gray-600">
-        {icon}
-      </div>
+      <div className="text-gray-600">{icon}</div>
       <div className="flex-1">
         <h3 className="font-medium">{title}</h3>
         <p className="text-sm text-gray-500">{subtitle}</p>
@@ -196,5 +275,74 @@ const NavItem = ({ icon, label, onClick, active }) => (
     <span className="text-xs">{label}</span>
   </button>
 );
+
+/* Notifications Modal Component */
+const NotificationsModal = ({ onClose }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/auth/notifications`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || 'Failed to fetch notifications');
+        }
+        const data = await response.json();
+        setNotifications(data.notifications);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, []);
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-content relative">
+        <h2 className="text-center font-semibold text-lg mb-4">NOTIFICATIONS</h2>
+        {loading ? (
+          <p className="text-center">Loading...</p>
+        ) : error ? (
+          <p className="text-center text-red-600">{error}</p>
+        ) : notifications.length === 0 ? (
+          <p className="text-center">No notifications found.</p>
+        ) : (
+          <div className="flex flex-col space-y-3">
+            {notifications.map((notif, index) => (
+              <div key={index} className="notification-card">
+                <p className="font-medium">{notif.type}</p>
+                <p className="text-sm">{notif.message}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <button
+          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+          onClick={onClose}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export default ProfilePage;

@@ -10,6 +10,7 @@ const classifyRoutes = require("./routes/classifyRoutes");
 const epfRoutes = require("./routes/epfroutes"); // Import EPF routes
 const gstRoutes = require("./routes/gstroutes");
 const itrRoutes = require("./routes/itrroutes");
+const chatbotRoutes = require('./routes/chatbotRoutes');
 
 const app = express();
 
@@ -28,6 +29,8 @@ app.use(epfRoutes);
 app.use(gstRoutes);
 // ✅ Use the ITR routes
 app.use(itrRoutes);
+
+app.use('/api/chatbot', chatbotRoutes);
 
 // Routes
 app.use('/api/auth', authRoutes);
