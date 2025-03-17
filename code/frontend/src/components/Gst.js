@@ -47,7 +47,7 @@ const GST = () => {
 
       // Call Nanonets API - REPLACE WITH YOUR ACTUAL MODEL ID AND API KEY
       const apiKey = "5aa26d66-fb76-11ef-a113-263262c841b0"; // Replace this
-      const modelId = "71087ee9-2900-4dd5-a53d-67efe247846c"; // Replace this
+      const modelId = "ed880aeb-7171-4658-b4d0-cb8011604541"; // Replace this
 
       const result = await axios.post(
         `https://app.nanonets.com/api/v2/OCR/Model/${modelId}/LabelFile/`,
