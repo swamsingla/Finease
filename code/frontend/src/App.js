@@ -6,7 +6,7 @@ import AuthPage from './components/AuthPage';
 import Navbar from './components/Navbar';
 import PasswordReset from './components/passwordReset';
 import ProfilePage from './components/ProfilePage';
-import ScanUpload from './components/ScanUpload'; // ✅ Fix import name
+import ScanUpload from './components/ScanUpload'; 
 import Scan from './components/Scan';
 import Epf from './components/Epf';
 import Gst from './components/Gst';
@@ -14,8 +14,12 @@ import Itr from './components/Itr';
 import Invoice from './components/Invoice';
 import InvoiceCreate from './components/invoice/InvoiceCreate';
 import EwayCreate from './components/ewaybill/EwayCreate';
-import FloatingChat from './components/FloatingChat'; // Import FloatingChat component
-import File from './components/File'; // ✅ Fix import name
+import FloatingChat from './components/FloatingChat';
+import File from './components/File';
+// Import the new filing components
+import GstFiling from './components/GstFiling';
+import ItrFiling from './components/ItrFiling';
+import PfFiling from './components/PfFiling';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -95,7 +99,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/upload" // ✅ Add this route for Scan.js
+          path="/upload" 
           element={
             <ProtectedRoute>
               <ScanUpload />
@@ -199,6 +203,34 @@ function AppContent() {
             </ProtectedRoute>
           }
         /> */}
+        {/* Add the three new routes */}
+        <Route 
+          path="/gst-filing" 
+          element={
+            <ProtectedRoute>
+              <GstFiling />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/itr-filing" 
+          element={
+            <ProtectedRoute>
+              <ItrFiling />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/pf-filing" 
+          element={
+            <ProtectedRoute>
+              <PfFiling />
+            </ProtectedRoute>
+          } 
+        />
+        
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
