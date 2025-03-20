@@ -9,6 +9,7 @@ const GST = () => {
   const [formData, setFormData] = useState({
     email: "",
     gstin: "",
+    ctin: "", // Added CTIN field
     invoiceDate: "",
     placeOfSupply: "",
     address: "",
@@ -109,6 +110,7 @@ const GST = () => {
       const extractedData = {
         email: predictions.find(p => p.label === "email")?.ocr_text || "",
         gstin: predictions.find(p => p.label === "gstin")?.ocr_text || "",
+        ctin: predictions.find(p => p.label === "ctin")?.ocr_text || "", // Added CTIN extraction
         invoiceDate: formatDateString(predictions.find(p => p.label === "invoice_date")?.ocr_text || ""),
         placeOfSupply: predictions.find(p => p.label === "place_of_supply")?.ocr_text || "",
         address: predictions.find(p => p.label === "address")?.ocr_text || "",
@@ -251,6 +253,18 @@ const GST = () => {
             type="text"
             name="gstin"
             value={formData.gstin}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border rounded-md"
+            required
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700">CTIN</label>
+          <input
+            type="text"
+            name="ctin"
+            value={formData.ctin}
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md"
             required

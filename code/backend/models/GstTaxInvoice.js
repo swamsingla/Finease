@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const gstTaxInvoiceSchema = new mongoose.Schema({
   email: { type: String, required: true, ref: 'User' },
   gstin: { type: String, required: true },
+  ctin: { type: String, required: true }, // Added CTIN field
   invoiceDate: { type: Date, required: true },
   dueDate: { 
     type: Date, 
