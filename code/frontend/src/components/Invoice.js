@@ -13,26 +13,40 @@ const Invoice = () => {
 
       <Card 
         className="hover:bg-gray-100 transition-colors cursor-pointer mb-4"
-        onClick={() => navigate('/invoice/create')}  // Updated this line
-        >
+        onClick={() => navigate('/invoice/create')}
+      >
         <CardContent className="p-6 flex items-center gap-4">
-            �
+            📄
             <div className="flex-1">
             <h3 className="font-medium">Generate Invoice</h3>
             <p className="text-sm text-gray-500">Create an invoice for your records</p>
             </div>
         </CardContent>
-        </Card>
+      </Card>
 
       <Card 
-        className="hover:bg-gray-100 transition-colors cursor-pointer"
-        onClick={() => navigate('/invoice/ewayBill')}  // Updated this lines
+        className="hover:bg-gray-100 transition-colors cursor-pointer mb-4"
+        onClick={() => navigate('/invoice/ewayBill')}
       >
         <CardContent className="p-6 flex items-center gap-4">
           📜
           <div className="flex-1">
             <h3 className="font-medium">Generate E-Way Bill</h3>
             <p className="text-sm text-gray-500">Create an e-way bill for transport</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* New EPF ECR Generator Card */}
+      <Card 
+        className="hover:bg-gray-100 transition-colors cursor-pointer mb-4"
+        onClick={() => navigate('/epf-ecr')}
+      >
+        <CardContent className="p-6 flex items-center gap-4">
+          📊
+          <div className="flex-1">
+            <h3 className="font-medium">EPF ECR Generator</h3>
+            <p className="text-sm text-gray-500">Create and download ECR file for EPF submissions</p>
           </div>
         </CardContent>
       </Card>

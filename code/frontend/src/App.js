@@ -21,6 +21,9 @@ import GstFiling from './components/GstFiling';
 import ItrFiling from './components/ItrFiling';
 import PfFiling from './components/PfFiling';
 
+//Import ECR Generation component
+import EpfEcr from "./components/EpfEcr";
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -137,7 +140,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-        
+        <Route 
+          path="/epf-ecr"
+          element={
+            <ProtectedRoute>
+              <EpfEcr />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/reset-password"
           element={
