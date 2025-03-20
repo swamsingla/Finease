@@ -37,3 +37,14 @@ exports.submitITRData = async (req, res) => {
     res.status(500).json({ error: "Failed to submit ITR data. Please try again." });
   }
 };
+
+exports.getITRData = async (req, res) => {
+  try {
+    // Fetch all ITR records; adjust query as needed
+    const itrData = await ITR.find();
+    res.status(200).json(itrData);
+  } catch (error) {
+    console.error("Error fetching ITR data:", error);
+    res.status(500).json({ error: "Failed to fetch ITR data. Please try again." });
+  }
+};
