@@ -12,7 +12,7 @@
 - Ayush Kumar Gupta  
 - Swam Singla  
 
-## Key Discussion Points from Meeting (March 22, 2025)
+## Key Discussion Points from Meeting (March 21, 2025)
 
 ### GST and ITR Filing API Unavailability  
 Since **GST and ITR filing APIs** are currently not available, we will proceed with using the **submission-ready JSON files** feature. This will allow us to continue processing and storing necessary data without requiring direct API integration at this stage.  
