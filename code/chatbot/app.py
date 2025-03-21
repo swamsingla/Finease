@@ -11,8 +11,7 @@ from document_processors import (
     classify_document, 
     extract_gst_data, 
     extract_itr_data, 
-    extract_epf_data,
-    sync_user_data
+    extract_epf_data
 )
 from formatters import (
     format_gst_data_for_whatsapp, 
@@ -57,11 +56,6 @@ def webhook():
     # Get current user state
     user_state = session['state']
     
-    # Sync user info to database (will create user if not exists)
-    sync_result = sync_user_data(sender)
-    if "error" in sync_result:
-        print(f"Error syncing user data: {sync_result['error']}")
-    
     if num_media > 0:
         # Handle incoming media based on user state
         if user_state == 'awaiting_document':
@@ -77,14 +71,10 @@ def webhook():
             )
             
             media_files = []
-            media_urls = []
             
             for i in range(num_media):
                 media_url = request.values.get(f'MediaUrl{i}')
                 content_type = request.values.get(f'MediaContentType{i}')
-                
-                # Store the media URL for database
-                media_urls.append(media_url)
                 
                 # Download media file to the option-specific folder
                 media_extension = get_file_extension(content_type)
@@ -113,14 +103,6 @@ def webhook():
                         # Format and send the classification result
                         result_message = format_classification_result(classification_result)
                         resp.message(result_message)
-                        
-                        # Sync to database with classify document type
-                        sync_user_data(
-                            sender, 
-                            document_type="classification", 
-                            document_data=classification_result, 
-                            media_url=media_urls[0] if media_urls else None
-                        )
             
             elif selected_option == 'gst_filing':
                 if media_files:
@@ -165,14 +147,6 @@ def webhook():
                                 # Extract data
                                 extraction_result = extract_gst_data(file_path)
                                 print(f"GST Extraction result: {extraction_result}")
-                                
-                                # Sync the data to database
-                                sync_user_data(
-                                    sender, 
-                                    document_type="gst", 
-                                    document_data=extraction_result, 
-                                    media_url=media_urls[0] if media_urls else None
-                                )
                                 
                                 # Format and send the result
                                 gst_message = format_gst_data_for_whatsapp(extraction_result)
@@ -256,14 +230,6 @@ def webhook():
                                 extraction_result = extract_itr_data(file_path)
                                 print(f"ITR Extraction result: {extraction_result}")
                                 
-                                # Sync the data to database
-                                sync_user_data(
-                                    sender, 
-                                    document_type="itr", 
-                                    document_data=extraction_result, 
-                                    media_url=media_urls[0] if media_urls else None
-                                )
-                                
                                 # Format and send the result
                                 itr_message = format_itr_data_for_whatsapp(extraction_result)
                                 client.messages.create(
@@ -345,14 +311,6 @@ def webhook():
                                 # Extract data
                                 extraction_result = extract_epf_data(file_path)
                                 print(f"PF Extraction result: {extraction_result}")
-                                
-                                # Sync the data to database
-                                sync_user_data(
-                                    sender, 
-                                    document_type="epf", 
-                                    document_data=extraction_result, 
-                                    media_url=media_urls[0] if media_urls else None
-                                )
                                 
                                 # Format and send the result
                                 epf_message = format_epf_data_for_whatsapp(extraction_result)
