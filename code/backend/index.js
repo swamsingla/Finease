@@ -4,7 +4,6 @@ const cors = require('cors');
 const multer = require("multer");
 const connectDB = require('./config/database');
 const invoiceRoutes = require('./routes/invoiceRoutes');
-
 const authRoutes = require('./routes/authRoutes');
 const classifyRoutes = require("./routes/classifyRoutes");
 const epfRoutes = require("./routes/epfroutes"); // Import EPF routes
@@ -12,6 +11,7 @@ const gstRoutes = require("./routes/gstroutes");
 const itrRoutes = require("./routes/itrroutes");
 const chatbotRoutes = require('./routes/chatbotRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const fileRoutes = require('./routes/fileRoutes'); // Import file routes
 
 const app = express();
 
@@ -37,6 +37,9 @@ app.use('/api/chatbot', chatbotRoutes);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', require('./routes/passwordResetRoutes'));
+
+// File routes
+app.use('/api/files', fileRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
