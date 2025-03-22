@@ -43,12 +43,12 @@ function File() {
         </Card>
         
         {/* PF Filing Option */}
-        <Card className="hover:bg-gray-50 transition-colors cursor-pointer mb-4" onClick={() => navigate('/pf-filing')}>
+        <Card className="hover:bg-gray-50 transition-colors cursor-pointer mb-4" onClick={() => navigate('/epf-ecr')}>
           <CardContent className="p-6 flex items-center gap-4">
             <Briefcase className="w-6 h-6 text-gray-600" />
             <div className="flex-1">
-              <h3 className="font-medium">PF Filing</h3>
-              <p className="text-sm text-gray-500">File your provident fund documents</p>
+              <h3 className="font-medium">EPF ECR Generator</h3>
+              <p className="text-sm text-gray-500">Create and download ECR file for EPF submissions</p>
             </div>
           </CardContent>
         </Card>
