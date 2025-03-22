@@ -25,7 +25,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 MEDIA_FOLDER = os.path.join(APP_DIR, 'media')
 
 # Document type options
-DOCUMENT_OPTIONS = ['gst_filing', 'itr_filing', 'pf_filing', 'classify']
+DOCUMENT_OPTIONS = ['gst_filing', 'itr_filing', 'pf_filing', 'classify', 'authenticate']
 
 # Menu options with emojis and descriptions
 MENU_OPTIONS = {
@@ -52,5 +52,11 @@ MENU_OPTIONS = {
         'key': 'classify',
         'emoji': '🔍',
         'description': 'Analyze and classify your document'
+    },
+    '5': {
+        'name': 'Logout',
+        'key': 'logout',
+        'emoji': '🔒',
+        'description': 'Sign out and unlink your WhatsApp account'
     }
 }

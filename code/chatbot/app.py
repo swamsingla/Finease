@@ -3,10 +3,19 @@ from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 import os
 import time
+import re
 
 # Import our modules
 import config
-from utils import get_file_extension, download_media, send_whatsapp_message, format_menu
+from utils import (
+    get_file_extension, 
+    download_media, 
+    send_whatsapp_message, 
+    format_menu, 
+    format_auth_menu,
+    save_to_database,
+    authenticate_user
+)
 from document_processors import (
     classify_document, 
     extract_gst_data, 
@@ -56,6 +65,60 @@ def webhook():
     # Get current user state
     user_state = session['state']
     
+    # Check for logout command first
+    if incoming_msg.lower() == '5':
+        session_manager.logout(sender)
+        resp.message("🔒 *You have been logged out*\n\nYour WhatsApp number is no longer linked to your account.")
+        resp.message(format_auth_menu())
+        session_manager.update_session(sender, state='awaiting_auth')
+        return str(resp)
+    
+    # Check for authentication command
+    login_pattern = r'^login:(.+):(.+)$'
+    if re.match(login_pattern, incoming_msg):
+        # Extract credentials from the message
+        match = re.match(login_pattern, incoming_msg)
+        email = match.group(1).strip()
+        password = match.group(2).strip()
+        
+        # Authenticate with the backend
+        auth_result = authenticate_user(email, password, sender)
+        
+        if auth_result:
+            # Store user data in session
+            user_data = {
+                'id': auth_result['user']['id'],
+                'email': auth_result['user']['email'],
+                'token': auth_result['token']
+            }
+            session_manager.set_authenticated(sender, user_data)
+            
+            # Send success message
+            resp.message("🔑 *Authentication Successful!*\n\nYour WhatsApp number is now linked to your account. All documents you upload will be saved to your profile.")
+            
+            # Show the menu
+            resp.message(format_menu())
+            session_manager.update_session(sender, state='awaiting_option')
+        else:
+            # Authentication failed
+            resp.message("❌ *Authentication Failed*\n\nThe email or password is incorrect. Please try again.")
+            resp.message(format_auth_menu())
+            session_manager.update_session(sender, state='awaiting_auth')
+        
+        return str(resp)
+    
+    # Check if user is authenticated - redirect to auth if not
+    if not session_manager.is_authenticated(sender) and user_state != 'awaiting_auth':
+        # User needs to authenticate first
+        if incoming_msg.lower() in ['hi', 'hello', 'hey', 'start']:
+            resp.message("👋 *Welcome to FinEase!*\n\nTo use our services, you must first authenticate your WhatsApp account.")
+        else:
+            resp.message("🔒 *Authentication Required*\n\nYou need to log in to use this service.")
+        
+        resp.message(format_auth_menu())
+        session_manager.update_session(sender, state='awaiting_auth')
+        return str(resp)
+    
     if num_media > 0:
         # Handle incoming media based on user state
         if user_state == 'awaiting_document':
@@ -78,20 +141,24 @@ def webhook():
                 
                 # Download media file to the option-specific folder
                 media_extension = get_file_extension(content_type)
+                original_filename = os.path.basename(media_url)
                 media_filename = os.path.join(
                     option_folder, 
-                    f"document_{i}_{os.path.basename(media_url)}.{media_extension}"
+                    f"document_{i}_{original_filename}.{media_extension}"
                 )
                 
                 download_media(media_url, media_filename)
-                media_files.append((media_filename, content_type))
+                media_files.append((media_filename, content_type, original_filename))
+            
+            # User is authenticated because we already checked above
+            user_id = session_manager.get_user_id(sender)
             
             # Handle different options differently
             if selected_option == 'classify':
                 # For classification, send to the classification API and report results
                 if media_files:
                     # Only process the first file for classification
-                    file_path, _ = media_files[0]
+                    file_path, content_type, original_name = media_files[0]
                     
                     print(f"Sending file to classification: {file_path}")
                     classification_result = classify_document(file_path)
@@ -103,10 +170,23 @@ def webhook():
                         # Format and send the classification result
                         result_message = format_classification_result(classification_result)
                         resp.message(result_message)
+                        
+                        # Save the file to the database
+                        save_to_database(
+                            file_path=file_path,
+                            user_id=user_id,
+                            original_name=original_name,
+                            mime_type=content_type,
+                            document_type=selected_option,
+                            classification=classification_result.get('classification', 'Unknown'),
+                            extracted_data={},
+                            whatsapp_number=sender
+                        )
+                        resp.message("✅ Your document has been saved to your account.")
             
             elif selected_option == 'gst_filing':
                 if media_files:
-                    file_path, _ = media_files[0]
+                    file_path, content_type, original_name = media_files[0]
                     
                     # Send a simple initial message about classification
                     resp = MessagingResponse()
@@ -156,12 +236,46 @@ def webhook():
                                     to=sender
                                 )
                                 
+                                # Save the file to the database
+                                save_to_database(
+                                    file_path=file_path,
+                                    user_id=user_id,
+                                    original_name=original_name,
+                                    mime_type=content_type,
+                                    document_type=selected_option,
+                                    classification=document_type,
+                                    extracted_data=extraction_result,
+                                    whatsapp_number=sender
+                                )
+                                client.messages.create(
+                                    body="✅ Your document has been saved to your account.",
+                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                    to=sender
+                                )
+                                
                                 # Also send menu after a short delay
                                 time.sleep(1)
                             else:
                                 # Document type doesn't match GST, send appropriate message
                                 client.messages.create(
                                     body=f"⚠️ This doesn't appear to be a GST document. Classified as: *{document_type}*\n\nPlease try uploading a valid GST document.",
+                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                    to=sender
+                                )
+                                
+                                # Save the file to the database
+                                save_to_database(
+                                    file_path=file_path,
+                                    user_id=user_id,
+                                    original_name=original_name,
+                                    mime_type=content_type,
+                                    document_type=selected_option,
+                                    classification=document_type,
+                                    extracted_data={},
+                                    whatsapp_number=sender
+                                )
+                                client.messages.create(
+                                    body="✅ Your document has been saved to your account.",
                                     from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
                                     to=sender
                                 )
@@ -188,7 +302,7 @@ def webhook():
             
             elif selected_option == 'itr_filing':
                 if media_files:
-                    file_path, _ = media_files[0]
+                    file_path, content_type, original_name = media_files[0]
                     
                     # Send a simple initial message about classification
                     resp = MessagingResponse()
@@ -238,12 +352,46 @@ def webhook():
                                     to=sender
                                 )
                                 
+                                # Save the file to the database
+                                save_to_database(
+                                    file_path=file_path,
+                                    user_id=user_id,
+                                    original_name=original_name,
+                                    mime_type=content_type,
+                                    document_type=selected_option,
+                                    classification=document_type,
+                                    extracted_data=extraction_result,
+                                    whatsapp_number=sender
+                                )
+                                client.messages.create(
+                                    body="✅ Your document has been saved to your account.",
+                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                    to=sender
+                                )
+                                
                                 # Also send menu after a short delay
                                 time.sleep(1)
                             else:
                                 # Document type doesn't match ITR, send appropriate message
                                 client.messages.create(
                                     body=f"⚠️ This doesn't appear to be an ITR document. Classified as: *{document_type}*\n\nPlease try uploading a valid ITR document.",
+                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                    to=sender
+                                )
+                                
+                                # Save the file to the database
+                                save_to_database(
+                                    file_path=file_path,
+                                    user_id=user_id,
+                                    original_name=original_name,
+                                    mime_type=content_type,
+                                    document_type=selected_option,
+                                    classification=document_type,
+                                    extracted_data={},
+                                    whatsapp_number=sender
+                                )
+                                client.messages.create(
+                                    body="✅ Your document has been saved to your account.",
                                     from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
                                     to=sender
                                 )
@@ -270,7 +418,7 @@ def webhook():
                             
             elif selected_option == 'pf_filing':
                 if media_files:
-                    file_path, _ = media_files[0]
+                    file_path, content_type, original_name = media_files[0]
                     
                     # Send a simple initial message about classification
                     resp = MessagingResponse()
@@ -320,12 +468,46 @@ def webhook():
                                     to=sender
                                 )
                                 
+                                # Save the file to the database
+                                save_to_database(
+                                    file_path=file_path,
+                                    user_id=user_id,
+                                    original_name=original_name,
+                                    mime_type=content_type,
+                                    document_type=selected_option,
+                                    classification=document_type,
+                                    extracted_data=extraction_result,
+                                    whatsapp_number=sender
+                                )
+                                client.messages.create(
+                                    body="✅ Your document has been saved to your account.",
+                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                    to=sender
+                                )
+                                
                                 # Also send menu after a short delay
                                 time.sleep(1)
                             else:
                                 # Document type doesn't match PF, send appropriate message
                                 client.messages.create(
                                     body=f"⚠️ This doesn't appear to be a PF document. Classified as: *{document_type}*\n\nPlease try uploading a valid PF document.",
+                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                    to=sender
+                                )
+                                
+                                # Save the file to the database
+                                save_to_database(
+                                    file_path=file_path,
+                                    user_id=user_id,
+                                    original_name=original_name,
+                                    mime_type=content_type,
+                                    document_type=selected_option,
+                                    classification=document_type,
+                                    extracted_data={},
+                                    whatsapp_number=sender
+                                )
+                                client.messages.create(
+                                    body="✅ Your document has been saved to your account.",
                                     from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
                                     to=sender
                                 )
@@ -355,6 +537,20 @@ def webhook():
                     resp.message(f"{option_emoji} *Success!* Your document has been uploaded to *{option_name}*.")
                 else:
                     resp.message(f"{option_emoji} *Success!* Your {num_media} documents have been uploaded to *{option_name}*.")
+                
+                # Save all files to database
+                for file_path, content_type, original_name in media_files:
+                    save_to_database(
+                        file_path=file_path,
+                        user_id=user_id,
+                        original_name=original_name,
+                        mime_type=content_type,
+                        document_type=selected_option,
+                        classification="Unknown",
+                        extracted_data={},
+                        whatsapp_number=sender
+                    )
+                resp.message("✅ Your document(s) have been saved to your account.")
             
             # Reset user state
             session_manager.reset_session(sender)
@@ -371,12 +567,26 @@ def webhook():
                 
                 # Download media file to the general media folder
                 media_extension = get_file_extension(content_type)
+                original_filename = os.path.basename(media_url)
                 media_filename = os.path.join(
                     config.MEDIA_FOLDER, 
-                    f"received_media_{i}_{os.path.basename(media_url)}.{media_extension}"
+                    f"received_media_{i}_{original_filename}.{media_extension}"
                 )
                 
                 download_media(media_url, media_filename)
+                
+                # User is authenticated because we checked above
+                user_id = session_manager.get_user_id(sender)
+                save_to_database(
+                    file_path=media_filename,
+                    user_id=user_id,
+                    original_name=original_filename,
+                    mime_type=content_type,
+                    document_type="unknown",
+                    classification="Unknown",
+                    extracted_data={},
+                    whatsapp_number=sender
+                )
             
             resp.message("⚠️ Thanks for the file! Please select an option from the menu to properly categorize your document.")
             
@@ -387,36 +597,63 @@ def webhook():
     else:
         # Handle text messages based on user state
         if user_state == 'awaiting_option':
+            # Handle logout option
+            if incoming_msg == '5':
+                session_manager.logout(sender)
+                resp.message("🔒 *You have been logged out*\n\nYour WhatsApp number is no longer linked to your account.")
+                resp.message(format_auth_menu())
+                session_manager.update_session(sender, state='awaiting_auth')
+                return str(resp)
             # User should select one of the options by number
-            if incoming_msg in config.MENU_OPTIONS:
+            elif incoming_msg in config.MENU_OPTIONS:
                 selected_option = config.MENU_OPTIONS[incoming_msg]['key']
                 option_name = config.MENU_OPTIONS[incoming_msg]['name']
                 option_emoji = config.MENU_OPTIONS[incoming_msg]['emoji']
                 
-                session_manager.update_session(
-                    sender, 
-                    state='awaiting_document', 
-                    selected_option=selected_option
-                )
-                
-                resp.message(f"{option_emoji} You've selected *{option_name}*.\n\n📤 Please upload your document now.")
-                
+                # Handle logout option from menu selection
+                if selected_option == 'logout':
+                    session_manager.logout(sender)
+                    resp.message("🔒 *You have been logged out*\n\nYour WhatsApp number is no longer linked to your account.")
+                    resp.message(format_auth_menu())
+                    session_manager.update_session(sender, state='awaiting_auth')
+                else:
+                    session_manager.update_session(
+                        sender, 
+                        state='awaiting_document', 
+                        selected_option=selected_option
+                    )
+                    
+                    resp.message(f"{option_emoji} You've selected *{option_name}*.\n\n📤 Please upload your document now.")
             else:
                 # Invalid option selected, show menu again
                 resp.message(f"❗ *Please select a valid option*\n\nReply with a number from 1-{len(config.MENU_OPTIONS)} to select a filing option.")
                 resp.message(format_menu())
-                
+        
+        elif user_state == 'awaiting_auth':
+            # User should be sending authentication credentials
+            if incoming_msg.lower() in ['cancel', 'back', 'menu']:
+                # Since authentication is mandatory, redirect to auth menu
+                resp.message("🔒 *Authentication Required*\n\nYou need to log in to use this service.")
+                resp.message(format_auth_menu())
+            else:
+                resp.message("🔑 To authenticate, please use the format: `login:email:password`")
+        
         else:
-            # For any message, show the menu
-            # Set state to awaiting_option regardless of the message content
-            session_manager.update_session(sender, state='awaiting_option')
-            
-            # A friendly greeting for first-time or returning users
-            if incoming_msg in ['hello', 'hi', 'hey', 'start']:
-                resp.message(f"👋 *Welcome to FinEase!*")
+            # For any other state, show authentication message if not authenticated
+            # This shouldn't happen due to the auth check at the beginning, but just in case
+            if not session_manager.is_authenticated(sender):
+                resp.message("🔒 *Authentication Required*\n\nYou need to log in to use this service.")
+                resp.message(format_auth_menu())
+                session_manager.update_session(sender, state='awaiting_auth')
+            else:
+                # A friendly greeting for authenticated users
+                if incoming_msg in ['hello', 'hi', 'hey', 'start']:
+                    user_email = session_manager.get_session(sender)['auth'].get('email', 'your account')
+                    resp.message(f"👋 *Welcome back to FinEase!*\n\nYou are logged in as {user_email}.")
                 
-            # Show the menu for any message
-            resp.message(format_menu())
+                # Show the menu for any message
+                resp.message(format_menu())
+                session_manager.update_session(sender, state='awaiting_option')
     
     return str(resp)
 

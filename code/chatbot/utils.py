@@ -1,6 +1,7 @@
 import os
 import requests
-from config import TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER
+import base64
+from config import TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER, BACKEND_URL
 
 def get_file_extension(content_type):
     """Get file extension based on content type"""
@@ -36,6 +37,70 @@ def download_media(media_url, file_path):
     except Exception as e:
         print(f"Error downloading media: {e}")
         return False
+
+def save_to_database(file_path, user_id, original_name, mime_type, document_type, classification, extracted_data, whatsapp_number):
+    """Save file to database instead of local storage"""
+    try:
+        # Read file data and convert to base64
+        with open(file_path, 'rb') as f:
+            file_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        # Get file size
+        file_size = os.path.getsize(file_path)
+        
+        # Prepare data for API request
+        payload = {
+            'userId': user_id,
+            'originalName': original_name,
+            'mimeType': mime_type,
+            'fileData': file_data,
+            'documentType': document_type,
+            'classification': classification,
+            'extractedData': extracted_data,
+            'size': file_size,
+            'whatsappNumber': whatsapp_number
+        }
+        
+        # Send request to backend API
+        response = requests.post(
+            f"{BACKEND_URL}/api/files/save",
+            json=payload
+        )
+        
+        if response.status_code == 201:
+            print(f"File saved to database successfully: {response.json().get('fileId')}")
+            # Optionally, delete the local file after saving to database
+            os.remove(file_path)
+            return True
+        else:
+            print(f"Error saving file to database: {response.status_code}, {response.text}")
+            return False
+    except Exception as e:
+        print(f"Error saving file to database: {e}")
+        return False
+
+def authenticate_user(email, password, whatsapp_number):
+    """Authenticate a user with the backend"""
+    try:
+        payload = {
+            'email': email,
+            'password': password,
+            'whatsappNumber': whatsapp_number
+        }
+        
+        response = requests.post(
+            f"{BACKEND_URL}/api/files/authenticate-whatsapp",
+            json=payload
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Authentication error: {response.status_code}, {response.text}")
+            return None
+    except Exception as e:
+        print(f"Authentication error: {e}")
+        return None
 
 def send_whatsapp_message(to_number, message_body, media_url=None):
     """Send a WhatsApp message with optional media attachment"""
@@ -74,4 +139,24 @@ def format_menu():
         menu_text += f"*{key}*. {option['emoji']} {option['name']}\n   _{option['description']}_\n\n"
     
     menu_text += f"Reply with the option number (1-{len(MENU_OPTIONS)}) to continue."
+    
+    
     return menu_text
+
+def format_auth_menu():
+    """Create a well-formatted authentication menu with instructions"""
+    menu_text = "🔑 *User Authentication*\n\n"
+    menu_text += "To link your WhatsApp with your account, please send your login details in this format:\n\n"
+    menu_text += "```\nlogin:your_email@example.com:your_password\n```\n\n"
+    menu_text += "For example: `login:john@example.com:password123`\n\n"
+    menu_text += "Your credentials will be used only to link your WhatsApp number with your account."
+    
+    return menu_text
+
+def format_welcome_message(user_email):
+    """Format a welcome message for authenticated users"""
+    welcome_text = f"👋 *Welcome, {user_email}!*\n\n"
+    welcome_text += "You are now logged in to our document filing service. You can use all features of our chatbot.\n\n"
+    welcome_text += "To log out at any time, simply type 'logout'."
+    
+    return welcome_text
