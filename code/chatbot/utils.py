@@ -160,3 +160,76 @@ def format_welcome_message(user_email):
     welcome_text += "To log out at any time, simply type 'logout'."
     
     return welcome_text
+
+def save_extracted_data_to_specific_table(extracted_data, document_type, email):
+    """
+    Save extracted data to the appropriate database table based on document type
+    
+    Parameters:
+    - extracted_data: Dictionary containing the extracted information from the document
+    - document_type: The type of document (gst, itr, epf)
+    - email: User's email address
+    
+    Returns:
+    - Dictionary with success status and message
+    """
+    try:
+        # Lowercase the document type for consistent comparison
+        doc_type = document_type.lower()
+        
+        # Set the appropriate API endpoint based on document type
+        if 'gst' in doc_type or 'invoice' in doc_type or 'tax' in doc_type:
+            # Updated to use the correct GST endpoint from the backend
+            endpoint = f"{BACKEND_URL}/api/gst"
+            # Make sure email is included in the data
+            extracted_data['email'] = email
+            
+        elif 'itr' in doc_type or 'income tax' in doc_type or 'form 16' in doc_type:
+            # Updated to use the correct ITR endpoint from the backend
+            endpoint = f"{BACKEND_URL}/api/itr"
+            # Make sure email is included in the data
+            extracted_data['email'] = email
+            
+            # Convert period data if it exists
+            if 'period' in extracted_data and isinstance(extracted_data['period'], dict):
+                # No changes needed, the structure is already correct
+                pass
+                
+        elif 'epf' in doc_type or 'pf' in doc_type or 'provident' in doc_type:
+            # EPF endpoint (already corrected in previous update)
+            endpoint = f"{BACKEND_URL}/api/epf"
+            # Make sure email is included in the data
+            extracted_data['email'] = email
+            
+        else:
+            return {
+                'success': False,
+                'message': f"Unknown document type: {document_type}"
+            }
+        
+        # Send request to the specific API endpoint
+        response = requests.post(
+            endpoint,
+            json=extracted_data
+        )
+        
+        if response.status_code in [200, 201]:
+            print(f"Data saved to {doc_type} table successfully: {response.json()}")
+            return {
+                'success': True,
+                'message': f"Data saved to {doc_type} table",
+                'data': response.json()
+            }
+        else:
+            print(f"Error saving to {doc_type} table: {response.status_code}, {response.text}")
+            return {
+                'success': False,
+                'message': f"Failed to save data to {doc_type} table: {response.status_code}"
+            }
+            
+    except Exception as e:
+        print(f"Error saving extracted data to specific table: {e}")
+        return {
+            'success': False,
+            'message': f"Error: {str(e)}"
+        }
