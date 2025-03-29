@@ -14,7 +14,8 @@ from utils import (
     format_menu, 
     format_auth_menu,
     save_to_database,
-    authenticate_user
+    authenticate_user,
+    save_extracted_data_to_specific_table
 )
 from document_processors import (
     classify_document, 
@@ -224,8 +225,11 @@ def webhook():
                                     to=sender
                                 )
                                 
-                                # Extract data
-                                extraction_result = extract_gst_data(file_path)
+                                # Get user email from session
+                                user_email = session_manager.get_user_email(sender)
+                                
+                                # Extract data with user email
+                                extraction_result = extract_gst_data(file_path, user_email)
                                 print(f"GST Extraction result: {extraction_result}")
                                 
                                 # Format and send the result
@@ -236,25 +240,25 @@ def webhook():
                                     to=sender
                                 )
                                 
-                                # Save the file to the database
-                                save_to_database(
-                                    file_path=file_path,
-                                    user_id=user_id,
-                                    original_name=original_name,
-                                    mime_type=content_type,
-                                    document_type=selected_option,
-                                    classification=document_type,
+                                # Save to specific GST table in database
+                                save_result = save_extracted_data_to_specific_table(
                                     extracted_data=extraction_result,
-                                    whatsapp_number=sender
-                                )
-                                client.messages.create(
-                                    body="✅ Your document has been saved to your account.",
-                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
-                                    to=sender
+                                    document_type=document_type,
+                                    email=user_email
                                 )
                                 
-                                # Also send menu after a short delay
-                                time.sleep(1)
+                                if save_result['success']:
+                                    client.messages.create(
+                                        body="✅ Your GST document has been saved and processed successfully.",
+                                        from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                        to=sender
+                                    )
+                                else:
+                                    client.messages.create(
+                                        body=f"⚠️ Note: {save_result['message']}",
+                                        from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                        to=sender
+                                    )
                             else:
                                 # Document type doesn't match GST, send appropriate message
                                 client.messages.create(
@@ -340,8 +344,11 @@ def webhook():
                                     to=sender
                                 )
                                 
-                                # Extract data
-                                extraction_result = extract_itr_data(file_path)
+                                # Get user email from session
+                                user_email = session_manager.get_user_email(sender)
+                                
+                                # Extract data with user email
+                                extraction_result = extract_itr_data(file_path, user_email)
                                 print(f"ITR Extraction result: {extraction_result}")
                                 
                                 # Format and send the result
@@ -352,56 +359,25 @@ def webhook():
                                     to=sender
                                 )
                                 
-                                # Save the file to the database
-                                save_to_database(
-                                    file_path=file_path,
-                                    user_id=user_id,
-                                    original_name=original_name,
-                                    mime_type=content_type,
-                                    document_type=selected_option,
-                                    classification=document_type,
+                                # Save to specific ITR table in database
+                                save_result = save_extracted_data_to_specific_table(
                                     extracted_data=extraction_result,
-                                    whatsapp_number=sender
-                                )
-                                client.messages.create(
-                                    body="✅ Your document has been saved to your account.",
-                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
-                                    to=sender
+                                    document_type=document_type,
+                                    email=user_email
                                 )
                                 
-                                # Also send menu after a short delay
-                                time.sleep(1)
-                            else:
-                                # Document type doesn't match ITR, send appropriate message
-                                client.messages.create(
-                                    body=f"⚠️ This doesn't appear to be an ITR document. Classified as: *{document_type}*\n\nPlease try uploading a valid ITR document.",
-                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
-                                    to=sender
-                                )
-                                
-                                # Save the file to the database
-                                save_to_database(
-                                    file_path=file_path,
-                                    user_id=user_id,
-                                    original_name=original_name,
-                                    mime_type=content_type,
-                                    document_type=selected_option,
-                                    classification=document_type,
-                                    extracted_data={},
-                                    whatsapp_number=sender
-                                )
-                                client.messages.create(
-                                    body="✅ Your document has been saved to your account.",
-                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
-                                    to=sender
-                                )
-                            
-                            # Send menu in all cases
-                            client.messages.create(
-                                body=format_menu(),
-                                from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
-                                to=sender
-                            )
+                                if save_result['success']:
+                                    client.messages.create(
+                                        body="✅ Your ITR document has been saved and processed successfully.",
+                                        from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                        to=sender
+                                    )
+                                else:
+                                    client.messages.create(
+                                        body=f"⚠️ Note: {save_result['message']}",
+                                        from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                        to=sender
+                                    )
                     except Exception as e:
                         print(f"Error processing document: {e}")
                         client.messages.create(
@@ -456,8 +432,11 @@ def webhook():
                                     to=sender
                                 )
                                 
-                                # Extract data
-                                extraction_result = extract_epf_data(file_path)
+                                # Get user email from session
+                                user_email = session_manager.get_user_email(sender)
+                                
+                                # Extract data with user email
+                                extraction_result = extract_epf_data(file_path, user_email)
                                 print(f"PF Extraction result: {extraction_result}")
                                 
                                 # Format and send the result
@@ -468,56 +447,25 @@ def webhook():
                                     to=sender
                                 )
                                 
-                                # Save the file to the database
-                                save_to_database(
-                                    file_path=file_path,
-                                    user_id=user_id,
-                                    original_name=original_name,
-                                    mime_type=content_type,
-                                    document_type=selected_option,
-                                    classification=document_type,
+                                # Save to specific EPF table in database
+                                save_result = save_extracted_data_to_specific_table(
                                     extracted_data=extraction_result,
-                                    whatsapp_number=sender
-                                )
-                                client.messages.create(
-                                    body="✅ Your document has been saved to your account.",
-                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
-                                    to=sender
+                                    document_type=document_type,
+                                    email=user_email
                                 )
                                 
-                                # Also send menu after a short delay
-                                time.sleep(1)
-                            else:
-                                # Document type doesn't match PF, send appropriate message
-                                client.messages.create(
-                                    body=f"⚠️ This doesn't appear to be a PF document. Classified as: *{document_type}*\n\nPlease try uploading a valid PF document.",
-                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
-                                    to=sender
-                                )
-                                
-                                # Save the file to the database
-                                save_to_database(
-                                    file_path=file_path,
-                                    user_id=user_id,
-                                    original_name=original_name,
-                                    mime_type=content_type,
-                                    document_type=selected_option,
-                                    classification=document_type,
-                                    extracted_data={},
-                                    whatsapp_number=sender
-                                )
-                                client.messages.create(
-                                    body="✅ Your document has been saved to your account.",
-                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
-                                    to=sender
-                                )
-                            
-                            # Send menu in all cases
-                            client.messages.create(
-                                body=format_menu(),
-                                from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
-                                to=sender
-                            )
+                                if save_result['success']:
+                                    client.messages.create(
+                                        body="✅ Your EPF document has been saved and processed successfully.",
+                                        from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                        to=sender
+                                    )
+                                else:
+                                    client.messages.create(
+                                        body=f"⚠️ Note: {save_result['message']}",
+                                        from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                        to=sender
+                                    )
                     except Exception as e:
                         print(f"Error processing document: {e}")
                         client.messages.create(
