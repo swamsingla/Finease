@@ -40,7 +40,7 @@ def classify_document(file_path):
         print(f"Error classifying document: {e}")
         return {"error": f"Classification error: {str(e)}"}
 
-def extract_gst_data(file_path):
+def extract_gst_data(file_path, user_email=None):
     """Extract data from GST document using Nanonets API"""
     try:
         # Make sure we're using the absolute file path
@@ -69,7 +69,7 @@ def extract_gst_data(file_path):
                 result = response.json()
                 # Process the extracted data
                 if result and 'result' in result:
-                    extracted_data = process_gst_response(result)
+                    extracted_data = process_gst_response(result, user_email)
                     return extracted_data
                 else:
                     return {"error": "Could not extract data from the invoice"}
@@ -81,7 +81,7 @@ def extract_gst_data(file_path):
         print(f"Error extracting GST data: {e}")
         return {"error": f"Data extraction error: {str(e)}"}
 
-def extract_itr_data(file_path):
+def extract_itr_data(file_path, user_email=None):
     """Extract data from ITR document using Nanonets API"""
     try:
         # Make sure we're using the absolute file path
@@ -110,7 +110,7 @@ def extract_itr_data(file_path):
                 result = response.json()
                 # Process the extracted data
                 if result and 'result' in result:
-                    extracted_data = process_itr_response(result)
+                    extracted_data = process_itr_response(result, user_email)
                     return extracted_data
                 else:
                     return {"error": "Could not extract data from the ITR document"}
@@ -122,7 +122,7 @@ def extract_itr_data(file_path):
         print(f"Error extracting ITR data: {e}")
         return {"error": f"Data extraction error: {str(e)}"}
 
-def extract_epf_data(file_path):
+def extract_epf_data(file_path, user_email=None):
     """Extract data from EPF document using Nanonets API"""
     try:
         # Make sure we're using the absolute file path
@@ -151,7 +151,7 @@ def extract_epf_data(file_path):
                 result = response.json()
                 # Process the extracted data
                 if result and 'result' in result:
-                    extracted_data = process_epf_response(result)
+                    extracted_data = process_epf_response(result, user_email)
                     return extracted_data
                 else:
                     return {"error": "Could not extract data from the EPF document"}
@@ -163,50 +163,71 @@ def extract_epf_data(file_path):
         print(f"Error extracting EPF data: {e}")
         return {"error": f"Data extraction error: {str(e)}"}
 
-def process_gst_response(data):
+def process_gst_response(data, user_email=None):
     """Process Nanonets API response for GST documents"""
     try:
         predictions = data['result'][0]['prediction']
         
         # Extract fields from predictions
         extracted_data = {
-            "email": next((p['ocr_text'] for p in predictions if p['label'] == 'email'), ""),
             "gstin": next((p['ocr_text'] for p in predictions if p['label'] == 'gstin'), ""),
             "invoiceDate": next((p['ocr_text'] for p in predictions if p['label'] == 'invoice_date'), ""),
             "placeOfSupply": next((p['ocr_text'] for p in predictions if p['label'] == 'place_of_supply'), ""),
             "address": next((p['ocr_text'] for p in predictions if p['label'] == 'address'), ""),
-            "cgst": next((p['ocr_text'] for p in predictions if p['label'] == 'cgst_amount'), ""),
-            "sgst": next((p['ocr_text'] for p in predictions if p['label'] == 'sgst_amount'), ""),
-            "totalAmount": next((p['ocr_text'] for p in predictions if p['label'] == 'total_amount'), "")
+            "cgst": next((p['ocr_text'] for p in predictions if p['label'] == 'cgst_amount'), "0"),
+            "sgst": next((p['ocr_text'] for p in predictions if p['label'] == 'sgst_amount'), "0"),
+            "totalAmount": next((p['ocr_text'] for p in predictions if p['label'] == 'total_amount'), "0"),
+            "ctin": next((p['ocr_text'] for p in predictions if p['label'] == 'ctin'), "NULL")  # Adding CTIN field with default
         }
         
-        # Clean numeric values
+        # Use the session user's email instead of extracting from document
+        if user_email:
+            extracted_data["email"] = user_email
+        else:
+            # Fallback to extracted email only if user_email is not provided
+            extracted_data["email"] = next((p['ocr_text'] for p in predictions if p['label'] == 'email'), "")
+        
+        # Clean numeric values and ensure they're valid numbers
         for key in ['cgst', 'sgst', 'totalAmount']:
             if extracted_data[key]:
                 # Remove currency symbols, commas, etc.
-                extracted_data[key] = ''.join(c for c in extracted_data[key] if c.isdigit() or c in ['.', '-'])
+                clean_value = ''.join(c for c in extracted_data[key] if c.isdigit() or c in ['.', '-'])
+                
+                # Ensure it's a valid number (default to 0 if empty or invalid)
+                try:
+                    extracted_data[key] = float(clean_value) if clean_value else 0
+                except ValueError:
+                    extracted_data[key] = 0
+            else:
+                extracted_data[key] = 0
                 
         return extracted_data
     except Exception as e:
         print(f"Error processing Nanonets response: {e}")
         return {"error": f"Error processing extracted data: {str(e)}"}
 
-def process_itr_response(data):
+def process_itr_response(data, user_email=None):
     """Process Nanonets API response for ITR documents"""
     try:
         predictions = data['result'][0]['prediction']
         
         # Extract fields from predictions
         extracted_data = {
-            "email": next((p['ocr_text'] for p in predictions if p['label'] == 'email'), ""),
             "panNo": next((p['ocr_text'] for p in predictions if p['label'] == 'pan_no'), ""),
             "tan": next((p['ocr_text'] for p in predictions if p['label'] == 'tan'), ""),
             "addressEmployee": next((p['ocr_text'] for p in predictions if p['label'] == 'address_employee'), ""),
             "addressEmployer": next((p['ocr_text'] for p in predictions if p['label'] == 'address_employer'), ""),
-            "grossTotalIncome": next((p['ocr_text'] for p in predictions if p['label'] == 'gross_total_income'), ""),
-            "grossTaxableIncome": next((p['ocr_text'] for p in predictions if p['label'] == 'gross_taxable_income'), ""),
-            "netTaxPayable": next((p['ocr_text'] for p in predictions if p['label'] == 'net_tax_payable'), "")
+            "grossTotalIncome": next((p['ocr_text'] for p in predictions if p['label'] == 'gross_total_income'), "0"),
+            "grossTaxableIncome": next((p['ocr_text'] for p in predictions if p['label'] == 'gross_taxable_income'), "0"),
+            "netTaxPayable": next((p['ocr_text'] for p in predictions if p['label'] == 'net_tax_payable'), "0")
         }
+        
+        # Use the session user's email instead of extracting from document
+        if user_email:
+            extracted_data["email"] = user_email
+        else:
+            # Fallback to extracted email only if user_email is not provided
+            extracted_data["email"] = next((p['ocr_text'] for p in predictions if p['label'] == 'email'), "")
         
         # Handle period dates
         period_from = next((p['ocr_text'] for p in predictions if p['label'] == 'period_from'), "")
@@ -217,38 +238,60 @@ def process_itr_response(data):
             "to": period_to
         }
         
-        # Clean numeric values
+        # Clean numeric values and ensure they're valid numbers
         for key in ['grossTotalIncome', 'grossTaxableIncome', 'netTaxPayable']:
             if extracted_data[key]:
                 # Remove currency symbols, commas, etc.
-                extracted_data[key] = ''.join(c for c in extracted_data[key] if c.isdigit() or c in ['.', '-'])
+                clean_value = ''.join(c for c in extracted_data[key] if c.isdigit() or c in ['.', '-'])
+                
+                # Ensure it's a valid number (default to 0 if empty or invalid)
+                try:
+                    extracted_data[key] = float(clean_value) if clean_value else 0
+                except ValueError:
+                    extracted_data[key] = 0
+            else:
+                extracted_data[key] = 0
                 
         return extracted_data
     except Exception as e:
         print(f"Error processing ITR response: {e}")
         return {"error": f"Error processing extracted data: {str(e)}"}
 
-def process_epf_response(data):
+def process_epf_response(data, user_email=None):
     """Process Nanonets API response for EPF documents"""
     try:
         predictions = data['result'][0]['prediction']
         
         # Extract fields from predictions
         extracted_data = {
-            "email": next((p['ocr_text'] for p in predictions if p['label'] == 'email'), ""),
             "trrnNo": next((p['ocr_text'] for p in predictions if p['label'] == 'trrn_no'), ""),
             "establishmentId": next((p['ocr_text'] for p in predictions if p['label'] == 'establishment_id'), ""),
             "establishmentName": next((p['ocr_text'] for p in predictions if p['label'] == 'establishment_name'), ""),
             "wageMonth": next((p['ocr_text'] for p in predictions if p['label'] == 'wage_month'), ""),
-            "member": next((p['ocr_text'] for p in predictions if p['label'] == 'member'), ""),
-            "totalAmount": next((p['ocr_text'] for p in predictions if p['label'] == 'total_amount'), "")
+            "member": next((p['ocr_text'] for p in predictions if p['label'] == 'member'), "0"),
+            "totalAmount": next((p['ocr_text'] for p in predictions if p['label'] == 'total_amount'), "0")
         }
         
-        # Clean numeric values
+        # Use the session user's email instead of extracting from document
+        if user_email:
+            extracted_data["email"] = user_email
+        else:
+            # Fallback to extracted email only if user_email is not provided
+            extracted_data["email"] = next((p['ocr_text'] for p in predictions if p['label'] == 'email'), "")
+        
+        # Clean numeric values and ensure they're valid numbers
         for key in ['member', 'totalAmount']:
             if extracted_data[key]:
                 # Remove currency symbols, commas, etc.
-                extracted_data[key] = ''.join(c for c in extracted_data[key] if c.isdigit() or c in ['.', '-'])
+                clean_value = ''.join(c for c in extracted_data[key] if c.isdigit() or c in ['.', '-'])
+                
+                # Ensure it's a valid number (default to 0 if empty or invalid)
+                try:
+                    extracted_data[key] = float(clean_value) if clean_value else 0
+                except ValueError:
+                    extracted_data[key] = 0
+            else:
+                extracted_data[key] = 0
                 
         return extracted_data
     except Exception as e:
