@@ -1,204 +1,104 @@
-import React, { useState, useRef } from 'react';
-import { ScrollView, View, Button, Alert, ActivityIndicator } from 'react-native';
-import { RNHTMLtoPDF } from 'react-native-html-to-pdf';
-import { captureRef } from 'react-native-view-shot';
-import { Share } from 'react-native';
-
-import InvoiceForm from './InvoiceForm'; // Using the converted form component
-import InvoiceTemplate from './InvoiceTemplate';
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  StatusBar
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const InvoiceScreen = ({ navigation }) => {
-  const [formData, setFormData] = useState({
-    // Initial form data
-    soldBy: '',
-    soldByAddress: {
-      buildingNumber: '',
-      address: '',
-      landmark: '',
-      city: '',
-      state: '',
-      pincode: '',
-      countryCode: '',
-    },
-    billingName: '',
-    billingAddress: {
-      buildingNumber: '',
-      address: '',
-      landmark: '',
-      city: '',
-      state: '',
-      pincode: '',
-      countryCode: '',
-    },
-    shippingName: '',
-    shippingAddress: {
-      buildingNumber: '',
-      address: '',
-      landmark: '',
-      city: '',
-      state: '',
-      pincode: '',
-      countryCode: '',
-    },
-    sameAsBilling: false,
-    panNumber: '',
-    gstNumber: '',
-    stateUtCode: '',
-    orderDate: new Date().toISOString().split('T')[0],
-    orderNumber: '',
-    items: [
-      {
-        name: '',
-        unitPrice: '0',
-        discount: '0',
-        qty: '1',
-        taxType: '18',
-        netAmount: '0'
-      }
-    ]
-  });
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const invoiceRef = useRef(null);
-
-  const generateInvoiceNumber = () => {
-    return `INV-${Math.floor(Math.random() * 100000)}`;
-  };
-
-  const handleGenerate = async () => {
-    console.log('Generating invoice with data:', formData);
-    // Basic validation
-    // if (!formData.soldBy || !formData.billingName) {
-    //   Alert.alert('Validation Error', 'Please fill in all required fields');
-    //   return;
-    // }
-
-    try {
-      setIsLoading(true);
-
-      // Prepare invoice data with additional calculations
-      const invoiceData = {
-        ...formData,
-        invoiceNumber: generateInvoiceNumber(),
-        invoiceDate: new Date().toLocaleDateString('en-GB'),
-        items: formData.items.map(item => ({
-          ...item,
-          totalTax: ((parseFloat(item.netAmount) || 0) * (parseFloat(item.taxType) / 100)).toFixed(2)
-        }))
-      };
-
-      // Calculate totals
-      const subtotal = invoiceData.items.reduce((total, item) => {
-        return total + parseFloat(item.netAmount || 0);
-      }, 0);
-
-      const totalTax = invoiceData.items.reduce((total, item) => {
-        return total + parseFloat(item.totalTax || 0);
-      }, 0);
-
-      const grandTotal = subtotal + totalTax;
-
-      invoiceData.subtotal = subtotal.toFixed(2);
-      invoiceData.totalTax = totalTax.toFixed(2);
-      invoiceData.grandTotal = grandTotal.toFixed(2);
-
-      // Show preview first
-      setFormData(invoiceData);
-      console.log('Invoice data for preview:', invoiceData);
-      setShowPreview(true);
-
-    } catch (error) {
-      console.error('Error generating invoice:', error);
-      Alert.alert('Error', 'Failed to generate invoice');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleExportPDF = async () => {
-    try {
-      setIsLoading(true);
-
-      // Capture the invoice template as an image
-      const uri = await captureRef(invoiceRef, {
-        format: 'jpg',
-        quality: 0.9,
-      });
-
-      // Generate PDF from HTML that includes the captured image
-      const html = `
-        <html>
-          <body style="padding: 0; margin: 0;">
-            <img src="${uri}" style="width: 100%;" />
-          </body>
-        </html>
-      `;
-
-      const options = {
-        html,
-        fileName: `Invoice_${formData.invoiceNumber}`,
-        directory: 'Documents',
-      };
-
-      const file = await RNHTMLtoPDF.convert(options);
-
-      // Share the PDF
-      await Share.share({
-        url: `file://${file.filePath}`,
-        title: `Invoice ${formData.invoiceNumber}`,
-      });
-
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      Alert.alert('Error', 'Failed to export invoice as PDF');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleBackToEdit = () => {
-    setShowPreview(false);
-  };
-
-  if (showPreview) {
-    return (
-      <View style={{ flex: 1 }}>
-        <ScrollView>
-          <View ref={invoiceRef} collapsable={false}>
-            <InvoiceTemplate invoiceData={formData} />
-          </View>
-        </ScrollView>
-
-        <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Button title="Back to Edit" onPress={handleBackToEdit} disabled={isLoading} />
-          <Button title={isLoading ? 'Processing...' : 'Export PDF'} onPress={handleExportPDF} disabled={isLoading} />
-        </View>
-
-        {isLoading && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-            <ActivityIndicator size="large" color="#0000ff" />
-          </View>
-        )}
-      </View>
-    );
-  }
-
   return (
-    <ScrollView contentContainerStyle={{ padding: 16 }}>
-      <InvoiceForm
-        formData={formData}
-        setFormData={setFormData}
-        onGenerate={handleGenerate}
-      />
-
-      {isLoading && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      )}
-    </ScrollView>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Invoice Management</Text>
+      </View>
+      
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.sectionTitle}>Create New Document</Text>
+        
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => navigation.navigate('InvoiceCreate')}
+        >
+          <MaterialIcons name="receipt" size={32} color="#4a6da7" />
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Create New Invoice</Text>
+            <Text style={styles.cardDescription}>Generate professional invoices</Text>
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.card}
+          onPress={() => navigation.navigate('EWaybillCreate')}
+        >
+          <MaterialIcons name="description" size={32} color="#4a6da7" />
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Generate E-Waybill</Text>
+            <Text style={styles.cardDescription}>Create compliant E-Waybills</Text>
+          </View>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  header: {
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e4e8',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  content: {
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    color: '#333',
+  },
+  card: {
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  cardContent: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  cardDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+});
 
 export default InvoiceScreen;
