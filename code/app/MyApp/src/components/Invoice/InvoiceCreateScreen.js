@@ -1,13 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { ScrollView, View, Button, Alert, ActivityIndicator } from 'react-native';
-import { RNHTMLtoPDF } from 'react-native-html-to-pdf';
+import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import { captureRef } from 'react-native-view-shot';
-import { Share } from 'react-native';
+import Share from 'react-native-share';
 
 import InvoiceForm from './InvoiceForm'; // Using the converted form component
 import InvoiceTemplate from './InvoiceTemplate';
 
-const InvoiceScreen = ({ navigation }) => {
+const InvoiceCreateScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     // Initial form data
     soldBy: '',
@@ -57,7 +57,7 @@ const InvoiceScreen = ({ navigation }) => {
       }
     ]
   });
-
+  
   const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const invoiceRef = useRef(null);
@@ -67,16 +67,15 @@ const InvoiceScreen = ({ navigation }) => {
   };
 
   const handleGenerate = async () => {
-    console.log('Generating invoice with data:', formData);
     // Basic validation
-    // if (!formData.soldBy || !formData.billingName) {
-    //   Alert.alert('Validation Error', 'Please fill in all required fields');
-    //   return;
-    // }
+    if (!formData.soldBy || !formData.billingName) {
+      Alert.alert('Validation Error', 'Please fill in all required fields');
+      return;
+    }
 
     try {
       setIsLoading(true);
-
+      
       // Prepare invoice data with additional calculations
       const invoiceData = {
         ...formData,
@@ -87,27 +86,26 @@ const InvoiceScreen = ({ navigation }) => {
           totalTax: ((parseFloat(item.netAmount) || 0) * (parseFloat(item.taxType) / 100)).toFixed(2)
         }))
       };
-
+      
       // Calculate totals
       const subtotal = invoiceData.items.reduce((total, item) => {
         return total + parseFloat(item.netAmount || 0);
       }, 0);
-
+      
       const totalTax = invoiceData.items.reduce((total, item) => {
         return total + parseFloat(item.totalTax || 0);
       }, 0);
-
+      
       const grandTotal = subtotal + totalTax;
-
+      
       invoiceData.subtotal = subtotal.toFixed(2);
       invoiceData.totalTax = totalTax.toFixed(2);
       invoiceData.grandTotal = grandTotal.toFixed(2);
 
       // Show preview first
       setFormData(invoiceData);
-      console.log('Invoice data for preview:', invoiceData);
       setShowPreview(true);
-
+      
     } catch (error) {
       console.error('Error generating invoice:', error);
       Alert.alert('Error', 'Failed to generate invoice');
@@ -119,13 +117,13 @@ const InvoiceScreen = ({ navigation }) => {
   const handleExportPDF = async () => {
     try {
       setIsLoading(true);
-
+      
       // Capture the invoice template as an image
       const uri = await captureRef(invoiceRef, {
         format: 'jpg',
         quality: 0.9,
       });
-
+      
       // Generate PDF from HTML that includes the captured image
       const html = `
         <html>
@@ -134,21 +132,25 @@ const InvoiceScreen = ({ navigation }) => {
           </body>
         </html>
       `;
-
+      
       const options = {
         html,
         fileName: `Invoice_${formData.invoiceNumber}`,
         directory: 'Documents',
       };
-
+      
       const file = await RNHTMLtoPDF.convert(options);
-
+      
       // Share the PDF
-      await Share.share({
+      await Share.open({
         url: `file://${file.filePath}`,
+        type: 'application/pdf',
         title: `Invoice ${formData.invoiceNumber}`,
       });
-
+      
+      // Navigate back or to a success screen if needed
+      // navigation.navigate('InvoiceSuccess', { invoiceNumber: formData.invoiceNumber });
+      
     } catch (error) {
       console.error('Error exporting PDF:', error);
       Alert.alert('Error', 'Failed to export invoice as PDF');
@@ -156,7 +158,7 @@ const InvoiceScreen = ({ navigation }) => {
       setIsLoading(false);
     }
   };
-
+  
   const handleBackToEdit = () => {
     setShowPreview(false);
   };
@@ -169,12 +171,12 @@ const InvoiceScreen = ({ navigation }) => {
             <InvoiceTemplate invoiceData={formData} />
           </View>
         </ScrollView>
-
+        
         <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
           <Button title="Back to Edit" onPress={handleBackToEdit} disabled={isLoading} />
           <Button title={isLoading ? 'Processing...' : 'Export PDF'} onPress={handleExportPDF} disabled={isLoading} />
         </View>
-
+        
         {isLoading && (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
             <ActivityIndicator size="large" color="#0000ff" />
@@ -186,12 +188,12 @@ const InvoiceScreen = ({ navigation }) => {
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }}>
-      <InvoiceForm
+      <InvoiceForm 
         formData={formData}
         setFormData={setFormData}
-        onGenerate={handleGenerate}
+        onGenerate={handleGenerate} 
       />
-
+      
       {isLoading && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
           <ActivityIndicator size="large" color="#0000ff" />
@@ -201,4 +203,4 @@ const InvoiceScreen = ({ navigation }) => {
   );
 };
 
-export default InvoiceScreen;
+export default InvoiceCreateScreen;
