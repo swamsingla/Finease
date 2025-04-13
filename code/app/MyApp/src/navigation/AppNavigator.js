@@ -13,6 +13,8 @@ import EditProfileModal from '../components/Profile/EditProfileModal';
 import InvoiceScreen from '../components/Invoice/InvoiceScreen';
 import InvoiceCreateScreen from '../components/Invoice/InvoiceCreateScreen';
 import EWaybillCreateScreen from '../components/EWayBill/EWaybillCreateScreen.js';
+import SupportScreen from '../components/Support/SupportScreen'; 
+import ProfileScreen from '../components/Profile/ProfileScreen'; 
 
 const Stack = createStackNavigator();
 
@@ -36,8 +38,19 @@ const AppNavigator = () => {
       <Stack.Screen name="Invoice" component={InvoiceScreen} />
       <Stack.Screen name="InvoiceCreate" component={InvoiceCreateScreen} />
       <Stack.Screen name="EWaybillCreate" component={EWaybillCreateScreen} />
+      <Stack.Screen 
+        name="Support" 
+        component={SupportScreen} 
+        options={{ title: 'Support' }} 
+      />
+      <Stack.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 };
 
 export default AppNavigator;
+
