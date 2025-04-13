@@ -42,6 +42,8 @@ const ScanUploadPage = () => {
   const [isPDF, setIsPDF] = useState(false);
   const [fileName, setFileName] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [classification, setClassification] = useState(null);
+  const [classificationLoading, setClassificationLoading] = useState(false);
   
   // Function to handle document picking from device storage
   const handleDocumentPick = async () => {
@@ -82,6 +84,9 @@ const ScanUploadPage = () => {
           setFileURI(uri);
           setFileName(name);
           setIsPDF(type && type.includes('pdf'));
+          
+          // Classify the document
+          classifyDocument(asset);
         } else {
           Alert.alert('Error', 'No file was selected');
         }
@@ -122,6 +127,9 @@ const ScanUploadPage = () => {
           setFileURI(asset.uri);
           setFileName('Camera_' + new Date().toISOString().split('T')[0]);
           setIsPDF(false);
+          
+          // Classify the document
+          classifyDocument(asset);
         } else {
           Alert.alert('Error', 'No image was captured');
         }
@@ -132,19 +140,160 @@ const ScanUploadPage = () => {
     }
   };
 
+  // Function to classify document
+  const classifyDocument = async (asset) => {
+    setClassificationLoading(true);
+    setClassification(null);
+    
+    try {
+      // Create form data for the API request
+      const formData = new FormData();
+      
+      // Debug: Log asset details before appending to FormData
+      console.log('Asset details for debugging:', {
+        uri: asset.uri,
+        type: asset.type || 'image/jpeg',
+        fileName: asset.fileName,
+        fileSize: asset.fileSize,
+      });
+      
+      // Determine if the URI is a base64 data URL
+      const isBase64DataUrl = asset.uri && asset.uri.startsWith('data:');
+      console.log('Is base64 data URL:', isBase64DataUrl);
+      
+      let fileToUpload;
+      
+      if (isBase64DataUrl && Platform.OS === 'web') {
+        // For web with base64 data URL: Convert to Blob
+        console.log('Converting base64 data URL to Blob for web upload');
+        
+        try {
+          // Extract the base64 data (remove the data:image/png;base64, prefix)
+          const base64Data = asset.uri.split(',')[1];
+          const contentType = asset.uri.split(';')[0].split(':')[1] || 'image/jpeg';
+          
+          // Convert base64 to Blob using fetch API (works in browser environment)
+          const response = await fetch(`data:${contentType};base64,${base64Data}`);
+          const blob = await response.blob();
+          
+          console.log('Successfully created Blob from base64 data', {
+            size: blob.size,
+            type: blob.type
+          });
+          
+          // Use the Blob directly with a filename
+          fileToUpload = new File(
+            [blob], 
+            asset.fileName || `image.${contentType.split('/')[1]}`,
+            { type: contentType }
+          );
+        } catch (e) {
+          console.error('Error converting base64 to Blob:', e);
+          throw new Error('Failed to process image data');
+        }
+      } else {
+        // Normal case: Use the asset URI directly
+        fileToUpload = {
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || 'document.' + (asset.type ? asset.type.split('/')[1] : 'jpg'),
+        };
+      }
+      
+      // Debug: Log file object being appended to FormData
+      console.log('File object being appended to FormData:', 
+        isBase64DataUrl ? { type: fileToUpload.type, name: fileToUpload.name, isBlob: true } : fileToUpload
+      );
+      
+      // Append the file with its uri, type, and name
+      formData.append('file', fileToUpload);
+      
+      // Debug: Try to inspect FormData keys (limited in React Native)
+      console.log('FormData created with file key. Cannot directly inspect contents in React Native.');
+      
+      console.log('Sending classification request for:', asset.fileName || 'unnamed file');
+      
+      // Important: Don't set Content-Type header - let fetch set it with boundary automatically
+      const apiUrl = Platform.OS === 'android' 
+        ? 'http://10.0.2.2:5000/api/classify'  // For Android emulator
+        : 'http://localhost:5000/api/classify'; // For iOS simulator or web
+      
+      console.log('Sending request to API URL:', apiUrl);
+      
+      // Make API request
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+        // Do NOT include Content-Type header here - React Native will add it with proper boundary
+      });
+      
+      if (!response.ok) {
+        console.error('Server responded with status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+      
+      const responseText = await response.text();
+      console.log('Raw server response:', responseText);
+      
+      // Try to parse the response as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse server response as JSON:', e);
+        throw new Error('Server returned invalid JSON');
+      }
+      
+      setClassification(data.classification);
+      console.log("Classification result:", data.classification);
+    } catch (error) {
+      console.error('Classification error:', error);
+      
+      // In development mode, use mock data for testing UI
+      if (__DEV__) {
+        console.log('DEV MODE: Setting mock classification for testing');
+        // Uncomment the next line to test UI with mock data during development
+        // setClassification('PF Filing');
+      }
+      
+      Alert.alert(
+        'Classification Failed',
+        'Could not classify the document. Please check your server connection and try again.'
+      );
+    } finally {
+      setClassificationLoading(false);
+    }
+  };
+
   const resetCapture = () => {
     setFileURI(null);
     setFileName(null);
     setIsPDF(false);
+    setClassification(null);
   };
 
   const handleContinue = () => {
-    // Navigate to a document processing screen with the file details
-    navigation.navigate('DocumentFiling', { 
-      fileURI,
-      fileName,
-      isPDF
-    });
+    if (classification) {
+      // Navigate based on classification
+      switch(classification) {
+        case 'PF Filing':
+          navigation.navigate('EPFFiling', { fileURI, fileName, isPDF });
+          break;
+        case 'GST Filing':
+          navigation.navigate('GSTFiling', { fileURI, fileName, isPDF });
+          break;
+        case 'ITR Filing':
+          navigation.navigate('ITRFiling', { fileURI, fileName, isPDF });
+          break;
+        default:
+          navigation.navigate('DocumentFiling', { fileURI, fileName, isPDF });
+      }
+    } else {
+      // Default navigation if no classification
+      navigation.navigate('DocumentFiling', { fileURI, fileName, isPDF });
+    }
   };
 
   // Render main upload screen
@@ -158,7 +307,7 @@ const ScanUploadPage = () => {
           style={styles.card} 
           onPress={handleCameraCapture}
           activeOpacity={0.7}
-          disabled={isUploading}
+          disabled={isUploading || classificationLoading}
         >
           <View style={styles.cardContent}>
             <SimpleIcon name="camera" size={24} color="#4B5563" />
@@ -174,7 +323,7 @@ const ScanUploadPage = () => {
           style={styles.card} 
           onPress={handleDocumentPick}
           activeOpacity={0.7}
-          disabled={isUploading}
+          disabled={isUploading || classificationLoading}
         >
           <View style={styles.cardContent}>
             <SimpleIcon name="upload" size={24} color="#4B5563" />
@@ -189,6 +338,14 @@ const ScanUploadPage = () => {
         {isUploading && (
           <View style={styles.progressContainer}>
             <Text style={styles.progressText}>Accessing file picker...</Text>
+            <ActivityIndicator size="large" color="#2563EB" />
+          </View>
+        )}
+
+        {/* Classification Loading */}
+        {classificationLoading && (
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressText}>Classifying document...</Text>
             <ActivityIndicator size="large" color="#2563EB" />
           </View>
         )}
@@ -221,8 +378,47 @@ const ScanUploadPage = () => {
           </View>
         )}
 
+        {/* Classification Results */}
+        {classification && !classificationLoading && (
+          <View style={styles.classificationContainer}>
+            <Text style={styles.classificationTitle}>
+              📄 Document Type: <Text style={styles.classificationValue}>{classification}</Text>
+            </Text>
+
+            {/* Classification-specific buttons */}
+            <View style={styles.classificationButtonsContainer}>
+              {classification === 'PF Filing' && (
+                <TouchableOpacity
+                  style={[styles.classButton, styles.pfButton]}
+                  onPress={() => navigation.navigate('EPFFiling', { fileURI, fileName, isPDF })}
+                >
+                  <Text style={styles.classButtonText}>Proceed to EPF Filing</Text>
+                </TouchableOpacity>
+              )}
+
+              {classification === 'GST Filing' && (
+                <TouchableOpacity
+                  style={[styles.classButton, styles.gstButton]}
+                  onPress={() => navigation.navigate('GSTFiling', { fileURI, fileName, isPDF })}
+                >
+                  <Text style={styles.classButtonText}>Proceed to GST Filing</Text>
+                </TouchableOpacity>
+              )}
+
+              {classification === 'ITR Filing' && (
+                <TouchableOpacity
+                  style={[styles.classButton, styles.itrButton]}
+                  onPress={() => navigation.navigate('ITRFiling', { fileURI, fileName, isPDF })}
+                >
+                  <Text style={styles.classButtonText}>Proceed to ITR Filing</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Continue Button */}
-        {fileURI && !isUploading && (
+        {fileURI && !isUploading && !classificationLoading && !classification && (
           <View style={styles.actionContainer}>
             <TouchableOpacity
               style={styles.continueButton}
@@ -374,6 +570,60 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  classificationContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  classificationTitle: {
+    fontSize: 18,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  classificationValue: {
+    fontWeight: 'bold',
+  },
+  classificationButtonsContainer: {
+    width: '100%',
+    marginTop: 12,
+  },
+  classButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  pfButton: {
+    backgroundColor: '#3B82F6', // blue
+  },
+  gstButton: {
+    backgroundColor: '#10B981', // green
+  },
+  itrButton: {
+    backgroundColor: '#8B5CF6', // purple
+  },
+  classButtonText: {
+    color: 'white',
     fontWeight: '600',
     fontSize: 16,
   },
