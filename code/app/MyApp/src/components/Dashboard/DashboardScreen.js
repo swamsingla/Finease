@@ -493,7 +493,7 @@ const DashboardScreen = () => {
         >
           <Ionicons name="chatbubbles-outline" size={24} color="white" />
           <Text style={styles.supportText}>Need help with tax filing?</Text>
-          <Text style={styles.supportAction}>Chat with our experts</Text>
+          <Text style={styles.supportAction}>Ask questions to the support chatbot!</Text>
         </TouchableOpacity>
       </View>
 

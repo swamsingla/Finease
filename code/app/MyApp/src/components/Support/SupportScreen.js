@@ -10,8 +10,15 @@ const SupportScreen = () => {
     if (!question.trim()) return;
 
     // Add user question to conversation
-    setConversation((prev) => [...prev, { sender: 'user', text: question }]);
+    const updatedConversation = [...conversation, { sender: 'user', text: question }];
+    setConversation(updatedConversation);
     setLoading(true);
+
+    // Extract and format the last 5 messages as context (prefixed with "User:" or "Bot:")
+    const contextMessages = updatedConversation
+      .slice(-5)
+      .map(msg => `${msg.sender === 'bot' ? 'Bot' : 'User'}: ${msg.text}`)
+      .join('\n');
 
     try {
       const response = await fetch(
@@ -21,7 +28,11 @@ const SupportScreen = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ question }),
+          // Send both the question and context in the payload
+          body: JSON.stringify({ 
+            question, 
+            context: contextMessages 
+          }),
         }
       );
 
