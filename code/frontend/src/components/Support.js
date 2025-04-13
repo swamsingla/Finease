@@ -10,9 +10,16 @@ const Support = () => {
     e.preventDefault();
     if (!question.trim()) return;
 
-    // Add user question to conversation
-    setConversation((prev) => [...prev, { sender: 'user', text: question }]);
+    // Append the user's question to the conversation
+    const updatedConversation = [...conversation, { sender: 'user', text: question }];
+    setConversation(updatedConversation);
     setLoading(true);
+
+    // Extract the last 5 messages and format them as "User:" or "Bot:"
+    const contextMessages = updatedConversation
+      .slice(-5)
+      .map(msg => `${msg.sender === 'bot' ? 'Bot' : 'User'}: ${msg.text}`)
+      .join('\n');
 
     try {
       const response = await fetch(
@@ -22,28 +29,27 @@ const Support = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ question }),
+          // Send the current question and the session context to the backend
+          body: JSON.stringify({ 
+            question, 
+            context: contextMessages 
+          }),
         }
       );
 
-      // Check for non-OK status
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to fetch');
       }
 
       const data = await response.json();
-      if (data.answer) {
-        setConversation((prev) => [...prev, { sender: 'bot', text: data.answer }]);
-      } else {
-        setConversation((prev) => [
-          ...prev,
-          { sender: 'bot', text: 'No answer returned from server.' },
-        ]);
-      }
+      const botResponse = data.answer ? data.answer : 'No answer returned from server.';
+
+      // Append the bot's answer to the conversation
+      setConversation(prev => [...prev, { sender: 'bot', text: botResponse }]);
     } catch (error) {
       console.error('Chatbot Error:', error);
-      setConversation((prev) => [
+      setConversation(prev => [
         ...prev,
         { sender: 'bot', text: 'Error connecting to support.' },
       ]);

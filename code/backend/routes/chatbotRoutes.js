@@ -318,20 +318,7 @@ async function findRelevantChunks(question, topK = 3) {  // Increased from 2 to 
 }
 
 // Function to generate a chatbot response using Google's Gemini API
-async function generateResponse(question, contextChunks) {
-  // Combine chunks into a single context
-  const context = contextChunks.join('\n\n');
-  
-  // Craft a prompt that includes your retrieved context and the user's question
-  const prompt = `You are a helpful assistant for TaxFile website. Answer questions using only the provided website documentation. Be concise and direct.
-
-Website Documentation:
-${context}
-
-User Question: ${question}
-
-Answer the question based only on the documentation provided. If the answer is not in the documentation, say "I don't have information about that in my documentation. For more details, please refer to our FAQ section or contact support." Double-check the documentation before saying information is not available, and if there's related information, provide that instead.`;
-
+async function generateResponse(prompt) {
   try {
     if (!process.env.GEMINI_API_KEY) {
       throw new Error("GEMINI_API_KEY not found in environment variables");
@@ -359,7 +346,6 @@ Answer the question based only on the documentation provided. If the answer is n
       throw new Error("Invalid response structure from Gemini API");
     }
 
-    // Extract the generated text from Gemini's response
     const generatedText = response.data.candidates[0]?.content?.parts[0]?.text || "";
     return generatedText.trim();
   } catch (error) {
@@ -384,7 +370,7 @@ Answer the question based only on the documentation provided. If the answer is n
 
 // Debugging endpoint to see chunks
 router.get('/debug', (req, res) => {
-  return res.json({
+  return asyncres.json({
     chunksCount: documentChunks.length,
     documentLoaded: helpDocument.length > 0,
     documentLength: helpDocument.length,
@@ -397,52 +383,70 @@ router.get('/debug', (req, res) => {
 
 // Main chatbot endpoint
 router.post('/', async (req, res) => {
-  const { question } = req.body;
+  const { question, context } = req.body;
   if (!question) {
     return res.status(400).json({ error: 'Question is required.' });
   }
 
   try {
     console.log(`Processing chatbot request: "${question}"`);
-    
-    // If we don't have any processed chunks yet, process the document first
+
+    // Ensure document chunks are processed
     if (documentChunks.length === 0) {
       console.log("No document chunks available. Processing document first...");
       const result = await processDocument();
       if (!result.success) {
-        console.error("Failed to process document");
         return res.status(500).json({ error: 'Failed to process document. Please try again later.' });
       }
     }
     
-    // Find relevant chunks for this question
-    const relevantChunks = await findRelevantChunks(question);
-    
+    // Adjust the retrieval query based on session context.
+    let retrievalQuery = question;
+    // If the ambiguous question is about uploads and session context suggests invoice topic,
+    // modify the query to emphasize invoices.
+    if (
+      question.toLowerCase().includes("upload fails") &&
+      context && context.toLowerCase().includes("invoice")
+    ) {
+      retrievalQuery = "What if an invoice fails to upload?";
+    }
+
+    console.log(`Using retrieval query: "${retrievalQuery}"`);
+    // Find relevant chunks from the documentation using the modified query.
+    const relevantChunks = await findRelevantChunks(retrievalQuery);
     if (relevantChunks.length === 0) {
       console.warn("No relevant chunks found for question");
       return res.json({ answer: "I don't have specific information about that in my documentation. For more details, please refer to our FAQ section or contact support." });
     }
-    
-    // Generate a response based on the relevant chunks
-    const answer = await generateResponse(question, relevantChunks);
+
+    // Combine the relevant document chunks
+    const docContext = relevantChunks.join('\n\n');
+
+    // Build the prompt with clear instructions to consult the session context
+    const prompt = `You are a helpful assistant for the TaxFile website. Answer the user's question using ONLY the provided website documentation and the session context. Please analyze the conversation history (listed below) to determine the current topic. For instance, if the previous conversation was about invoice generation and the new question is "What if upload fails?", then provide the answer related to invoices, not tax filing.
+
+Website Documentation:
+${docContext}
+
+Session Context:
+${context || "No prior context provided."}
+
+User Question: ${question}
+
+Answer the question based only on this information.`;
+
+    // Log the built prompt for debugging
+    console.log("Built prompt:");
+    console.log(prompt);
+
+    // Generate the answer using the updated prompt
+    const answer = await generateResponse(prompt);
     console.log(`Generated answer: "${answer.substring(0, 100)}${answer.length > 100 ? '...' : ''}"`);
-    
+
     return res.json({ answer });
   } catch (error) {
     console.error("Error in chatbot processing:", error);
     return res.status(500).json({ error: 'An error occurred while processing your request.' });
-  }
-});
-
-// Endpoint to manually trigger document processing
-router.post('/process-documents', async (req, res) => {
-  try {
-    console.log("Manual document processing triggered");
-    const result = await processDocument();
-    res.json(result);
-  } catch (error) {
-    console.error("Error in manual document processing:", error);
-    res.status(500).json({ error: error.message });
   }
 });
 
