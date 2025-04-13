@@ -7,6 +7,8 @@ import EpfEcrScreen from '../components/Filings/EpfEcrScreen';
 import ScanUploadScreen from '../components/ScanUpload/ScanUploadScreen';
 import EditProfileModal from '../components/Profile/EditProfileModal';
 import InvoiceScreen from '../components/Invoice/InvoiceScreen';
+import InvoiceCreateScreen from '../components/Invoice/InvoiceCreateScreen';
+import EWaybillCreateScreen from '../components/EWayBill/EWaybillCreateScreen.js';
 import SupportScreen from '../components/Support/SupportScreen'; 
 import ProfileScreen from '../components/Profile/ProfileScreen'; 
 
@@ -26,6 +28,8 @@ const AppNavigator = () => {
       <Stack.Screen name="ScanUpload" component={ScanUploadScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileModal} options={{ presentation: 'modal' }} />
       <Stack.Screen name="Invoice" component={InvoiceScreen} />
+      <Stack.Screen name="InvoiceCreate" component={InvoiceCreateScreen} />
+      <Stack.Screen name="EWaybillCreate" component={EWaybillCreateScreen} />
       <Stack.Screen 
         name="Support" 
         component={SupportScreen} 
