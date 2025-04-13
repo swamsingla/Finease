@@ -1,13 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import { BarChart } from 'react-native-chart-kit';
+
+const screenWidth = Dimensions.get("window").width;
 
 const DashboardScreen = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
-  const [loading, setLoading] = useState(false);
+
+  const [period, setPeriod] = useState("yearly");
+  const [netIncome, setNetIncome] = useState("0");
+  const [monthlyIncomeData, setMonthlyIncomeData] = useState({
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    values: Array(12).fill(0)
+  });
+  const [documentStats, setDocumentStats] = useState({
+    totalDocuments: 0,
+    gstAmount: 0,
+    potentialSavings: 0,
+    daysRemaining: 0
+  });
+  const [cardData, setCardData] = useState({
+    tax: "0.00",
+    income: "0.00",
+    savings: "0.00",
+    expenses: "0.00",
+    investments: "0.00",
+    debt: "0.00"
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
   const [dashboardData, setDashboardData] = useState({
     pendingTasks: 2,
     upcomingDeadlines: [
@@ -24,33 +50,147 @@ const DashboardScreen = () => {
       savings: 8500,
     }
   });
+  
+  const calculateDaysRemaining = () => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const filingDeadline = new Date(currentYear, 6, 31);
+    if (today > filingDeadline) {
+      filingDeadline.setFullYear(currentYear + 1);
+    }
+    const diffTime = filingDeadline - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return { days: diffDays > 0 ? diffDays : 0 };
+  };
 
-  useEffect(() => {
-    // In a real app, you would fetch dashboard data from an API
-    setLoading(true);
-    // Simulating API call delay
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
-
-  const handleLogout = async () => {
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
     try {
-      await logout();
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+      const token = localStorage.getItem('token');
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        params: {}
+      };
+
+      config.params = period === 'monthly'
+        ? { year: currentYear, month: currentMonth }
+        : { year: currentYear };
+      
+      const statsResponse = await axios.get(
+        `http://localhost:5000/api/dashboard/document-statistics`,
+        config
+      );
+      const chartResponse = await axios.get(
+        `http://localhost:5000/api/dashboard/monthly-data`,
+        { ...config, params: { year: currentYear } }
+      );
+
+      const statsData = statsResponse.data.statistics;
+      const monthlyData = chartResponse.data.monthlyData.data;
+
+      const calculateYearlyData = (monthlyData) => {
+        let totalTax = 0;
+        let totalIncome = 0;
+        let totalDocuments = 0;
+        monthlyData.amounts.forEach(val => totalIncome += val);
+        monthlyData.taxes.forEach(val => totalTax += val);
+        monthlyData.totalCounts.forEach(val => totalDocuments += val);
+        return { tax: totalTax, income: totalIncome, documents: totalDocuments };
+      };
+
+      const yearlyData = calculateYearlyData(monthlyData);
+
+      const calculateMonthlyData = (monthlyData, index) => {
+        return { 
+          tax: monthlyData.taxes[index], 
+          income: monthlyData.amounts[index], 
+          documents: monthlyData.totalCounts[index] 
+        };
+      };
+
+      const monthlySummaryData = calculateMonthlyData(monthlyData, currentMonth - 1);
+      
+      if (period === 'yearly') {
+        setDocumentStats({
+          totalDocuments: yearlyData.documents,
+          gstAmount: yearlyData.tax,
+          potentialSavings: yearlyData.tax * 0.1,
+          daysRemaining: calculateDaysRemaining().days
+        });
+        const expenses = yearlyData.income * 0.65;
+        const debt = yearlyData.income * 0.28;
+        const operatingProfit = yearlyData.income - expenses - yearlyData.tax;
+        const investments = operatingProfit * 0.4;
+        const savings = operatingProfit - investments;
+        setCardData({
+          tax: yearlyData.tax.toFixed(2),
+          income: yearlyData.income.toFixed(2),
+          expenses: expenses.toFixed(2),
+          debt: debt.toFixed(2),
+          investments: investments.toFixed(2),
+          savings: savings.toFixed(2)
+        });
+        setNetIncome(yearlyData.income.toFixed(2));
+      } else {
+        setDocumentStats({
+          totalDocuments: monthlySummaryData.documents,
+          gstAmount: monthlySummaryData.tax,
+          potentialSavings: monthlySummaryData.tax * 0.1,
+          daysRemaining: calculateDaysRemaining().days
+        });
+        const expenses = monthlySummaryData.income * 0.65;
+        const debt = monthlySummaryData.income * 0.28;
+        const operatingProfit = monthlySummaryData.income - expenses - monthlySummaryData.tax;
+        const investments = operatingProfit * 0.4;
+        const savings = operatingProfit - investments;
+        setCardData({
+          tax: monthlySummaryData.tax.toFixed(2),
+          income: monthlySummaryData.income.toFixed(2),
+          expenses: expenses.toFixed(2),
+          debt: debt.toFixed(2),
+          investments: investments.toFixed(2),
+          savings: savings.toFixed(2)
+        });
+        setNetIncome(monthlySummaryData.income.toFixed(2));
+      }
+
+      if (chartResponse.data?.monthlyData) {
+        const monthlyChartData = chartResponse.data.monthlyData;
+        setMonthlyIncomeData({
+          labels: monthlyChartData.labels || monthlyIncomeData.labels,
+          values: monthlyChartData.data.amounts || Array(12).fill(0)
+        });
+      }
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const navigateTo = (screen) => {
-    navigation.navigate(screen);
-  };
+  useEffect(() => {
+    fetchDashboardData();
+  }, [period]);
 
   const formatCurrency = (amount) => {
-    return '₹' + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return '₹' + parseFloat(amount).toLocaleString();
   };
 
-  if (loading) {
+  const chartData = {
+    labels: monthlyIncomeData.labels,
+    datasets: [
+      {
+        data: monthlyIncomeData.values,
+        color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`
+      }
+    ]
+  };
+
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
@@ -62,7 +202,7 @@ const DashboardScreen = () => {
   return (
     <ScrollView style={styles.scrollView}>
       <View style={styles.container}>
-        {/* Header Section */}
+        {/* Header with Profile button */}
         <View style={styles.header}>
           <View>
             <Text style={styles.welcomeTitle}>Welcome!</Text>
@@ -70,12 +210,27 @@ const DashboardScreen = () => {
               <Text style={styles.nameText}>Hello, {user.name || user.email}</Text>
             )}
           </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color="white" />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            {/* Profile Button */}
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Profile')}
+              style={styles.profileButton}
+            >
+              <Ionicons name="person-circle-outline" size={30} color="#3b82f6" />
+            </TouchableOpacity>
+            {/* Logout Button */}
+            <TouchableOpacity onPress={async () => {
+              try {
+                await logout();
+              } catch (error) {
+                console.error('Logout failed:', error);
+              }
+            }} style={styles.logoutButton}>
+              <Ionicons name="log-out-outline" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Company Info */}
         {user && user.companyName && (
           <View style={styles.companyCard}>
             <Ionicons name="business" size={24} color="#3b82f6" />
@@ -86,27 +241,74 @@ const DashboardScreen = () => {
           </View>
         )}
 
-        {/* Quick Actions */}
+        <View style={styles.netIncomeContainer}>
+          <Text style={styles.netIncomeText}>
+            Total Business Volume ({period}): ₹{netIncome}
+          </Text>
+        </View>
+
+        <View style={styles.chartContainer}>
+          <BarChart
+            data={chartData}
+            width={screenWidth - 32}
+            height={220}
+            chartConfig={{
+              backgroundGradientFrom: "#fff",
+              backgroundGradientTo: "#fff",
+              color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(0,0,0,${opacity})`
+            }}
+            style={styles.chartStyle}
+          />
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cardScroll}>
+          <View style={[styles.card, { backgroundColor: '#D1E8E2' }]}>
+            <Text style={styles.cardTitle}>Tax (GST)</Text>
+            <Text style={styles.cardValue}>₹{cardData.tax}</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: '#A9D6E5' }]}>
+            <Text style={styles.cardTitle}>Income</Text>
+            <Text style={styles.cardValue}>₹{cardData.income}</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: '#E2E2E2' }]}>
+            <Text style={styles.cardTitle}>Savings</Text>
+            <Text style={styles.cardValue}>₹{cardData.savings}</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: '#D1E8E2' }]}>
+            <Text style={styles.cardTitle}>Expenses</Text>
+            <Text style={styles.cardValue}>₹{cardData.expenses}</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: '#A9D6E5' }]}>
+            <Text style={styles.cardTitle}>Investments</Text>
+            <Text style={styles.cardValue}>₹{cardData.investments}</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: '#E2E2E2' }]}>
+            <Text style={styles.cardTitle}>Debt</Text>
+            <Text style={styles.cardValue}>₹{cardData.debt}</Text>
+          </View>
+        </ScrollView>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActions}>
             <TouchableOpacity 
               style={styles.actionButton} 
-              onPress={() => navigateTo('GstFiling')}
+              onPress={() => navigation.navigate('GstFiling')}
             >
               <Ionicons name="calculator-outline" size={24} color="#3b82f6" />
               <Text style={styles.actionText}>GST Filing</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.actionButton}
-              onPress={() => navigateTo('ItrFiling')}
+              onPress={() => navigation.navigate('ItrFiling')}
             >
               <Ionicons name="receipt-outline" size={24} color="#3b82f6" />
               <Text style={styles.actionText}>ITR Filing</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.actionButton}
-              onPress={() => navigateTo('ScanUpload')}
+              onPress={() => navigation.navigate('ScanUpload')}
             >
               <Ionicons name="scan-outline" size={24} color="#3b82f6" />
               <Text style={styles.actionText}>Scan Doc</Text>
@@ -114,7 +316,6 @@ const DashboardScreen = () => {
           </View>
         </View>
 
-        {/* Tax Summary */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tax Summary</Text>
           <View style={styles.taxSummaryContainer}>
@@ -139,13 +340,14 @@ const DashboardScreen = () => {
           </View>
         </View>
 
-        {/* Upcoming Deadlines */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Upcoming Deadlines</Text>
           {dashboardData.upcomingDeadlines.map((deadline) => (
             <View key={deadline.id} style={styles.deadlineItem}>
-              <View style={[styles.deadlineIconContainer, 
-                deadline.type === 'GST' ? styles.gstIcon : styles.itrIcon]}>
+              <View style={[
+                styles.deadlineIconContainer, 
+                deadline.type === 'GST' ? styles.gstIcon : styles.itrIcon
+              ]}>
                 <Ionicons
                   name={deadline.type === 'GST' ? 'calculator-outline' : 'receipt-outline'}
                   size={20}
@@ -161,7 +363,6 @@ const DashboardScreen = () => {
           ))}
         </View>
         
-        {/* Recent Documents */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Documents</Text>
           {dashboardData.recentDocuments.map((doc) => (
@@ -182,7 +383,6 @@ const DashboardScreen = () => {
           ))}
         </View>
 
-        {/* Support Section */}
         <TouchableOpacity 
           style={styles.supportCard}
           onPress={() => navigation.navigate('Support')}
@@ -203,8 +403,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
-    paddingBottom: 100, // Space for bottom navigation
+    padding: 16,
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -221,6 +421,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileButton: {
+    marginRight: 10,
   },
   welcomeTitle: {
     fontSize: 28,
@@ -260,6 +467,42 @@ const styles = StyleSheet.create({
   gstin: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  netIncomeContainer: {
+    backgroundColor: '#f1f5f9',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center'
+  },
+  netIncomeText: {
+    fontSize: 18,
+    fontWeight: '600'
+  },
+  chartContainer: {
+    alignItems: 'center',
+    marginBottom: 24
+  },
+  chartStyle: {
+    borderRadius: 8,
+  },
+  cardScroll: {
+    marginVertical: 16,
+  },
+  card: {
+    padding: 12,
+    borderRadius: 8,
+    marginRight: 16,
+    minWidth: 150,
+    alignItems: 'center'
+  },
+  cardTitle: {
+    fontSize: 14,
+    marginBottom: 4
+  },
+  cardValue: {
+    fontSize: 16,
+    fontWeight: 'bold'
   },
   section: {
     marginBottom: 24,

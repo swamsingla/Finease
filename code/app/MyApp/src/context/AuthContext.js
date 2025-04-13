@@ -14,7 +14,6 @@ export const AuthProvider = ({ children }) => {
       try {
         const storedUser = await AsyncStorage.getItem('user');
         const storedToken = await AsyncStorage.getItem('token');
-        
         if (storedUser && storedToken) {
           setUser(JSON.parse(storedUser));
           setToken(storedToken);
@@ -57,12 +56,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Added updateUser function
+  const updateUser = async (newData) => {
+    try {
+      // Merge newData into the existing user object
+      const updatedUser = { ...user, ...newData };
+      setUser(updatedUser);
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating user data:', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     token,
     loading,
     login,
     logout,
+    updateUser, // now available for components like EditProfileModal
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

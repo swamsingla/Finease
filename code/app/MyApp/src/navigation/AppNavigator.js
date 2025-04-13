@@ -7,6 +7,8 @@ import EpfEcrScreen from '../components/Filings/EpfEcrScreen';
 import ScanUploadScreen from '../components/ScanUpload/ScanUploadScreen';
 import EditProfileModal from '../components/Profile/EditProfileModal';
 import InvoiceScreen from '../components/Invoice/InvoiceScreen';
+import SupportScreen from '../components/Support/SupportScreen'; 
+import ProfileScreen from '../components/Profile/ProfileScreen'; 
 
 const Stack = createStackNavigator();
 
@@ -24,6 +26,15 @@ const AppNavigator = () => {
       <Stack.Screen name="ScanUpload" component={ScanUploadScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileModal} options={{ presentation: 'modal' }} />
       <Stack.Screen name="Invoice" component={InvoiceScreen} />
+      <Stack.Screen 
+        name="Support" 
+        component={SupportScreen} 
+        options={{ title: 'Support' }} 
+      />
+      <Stack.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{ headerShown: false }}/>
     </Stack.Navigator>
   );
 };

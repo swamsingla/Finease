@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 
 const SupportScreen = () => {
   const [question, setQuestion] = useState('');
@@ -33,9 +33,18 @@ const SupportScreen = () => {
       const data = await response.json();
       if (data.answer) {
         setConversation((prev) => [...prev, { sender: 'bot', text: data.answer }]);
+      } else {
+        setConversation((prev) => [
+          ...prev,
+          { sender: 'bot', text: 'No answer returned from server.' },
+        ]);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Chatbot Error:', error);
+      setConversation((prev) => [
+        ...prev,
+        { sender: 'bot', text: 'Error connecting to support.' },
+      ]);
     } finally {
       setLoading(false);
       setQuestion('');
@@ -44,21 +53,41 @@ const SupportScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Support</Text>
-      <View style={styles.conversation}>
-        {conversation.map((msg, index) => (
-          <Text key={index} style={msg.sender === 'user' ? styles.userMessage : styles.botMessage}>
-            {msg.text}
+      <Text style={styles.title}>TaxFile Support</Text>
+      <ScrollView style={styles.conversation} contentContainerStyle={{ paddingVertical: 8 }}>
+        {conversation.length === 0 && (
+          <Text style={styles.hint}>
+            Ask me anything about TaxFile services, tax filing, or how to use the platform!
           </Text>
+        )}
+        {conversation.map((msg, index) => (
+          <View
+            key={index}
+            style={[
+              styles.messageContainer,
+              msg.sender === 'bot' ? styles.botMessage : styles.userMessage,
+            ]}
+          >
+            <Text style={styles.senderText}>{msg.sender === 'bot' ? 'Support Bot:' : 'You:'}</Text>
+            <Text style={styles.messageText}>{msg.text}</Text>
+          </View>
         ))}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#007AFF" />
+          </View>
+        )}
+      </ScrollView>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Ask your question..."
+          value={question}
+          onChangeText={setQuestion}
+          editable={!loading}
+        />
+        <Button title="Send" onPress={handleSubmit} disabled={loading} />
       </View>
-      <TextInput
-        style={styles.input}
-        placeholder="Ask a question..."
-        value={question}
-        onChangeText={setQuestion}
-      />
-      <Button title="Send" onPress={handleSubmit} disabled={loading} />
     </View>
   );
 };
@@ -73,31 +102,56 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
+    color: '#007AFF',
   },
   conversation: {
     flex: 1,
     marginBottom: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 8,
+  },
+  hint: {
+    fontStyle: 'italic',
+    color: '#6B7280',
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
+  messageContainer: {
+    marginBottom: 10,
+    padding: 8,
+    borderRadius: 8,
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#d1e7dd',
-    padding: 8,
-    borderRadius: 8,
-    marginVertical: 4,
+    backgroundColor: '#D1E7DD',
   },
   botMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#f8d7da',
-    padding: 8,
-    borderRadius: 8,
-    marginVertical: 4,
+    backgroundColor: '#F8D7DA',
+  },
+  senderText: {
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   input: {
+    flex: 1,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
     padding: 8,
-    marginBottom: 8,
+    marginRight: 8,
   },
 });
 
