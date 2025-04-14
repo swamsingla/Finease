@@ -43,6 +43,17 @@ const InvoiceScreen = ({ navigation }) => {
             <Text style={styles.cardDescription}>Create compliant E-Waybills</Text>
           </View>
         </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.card}
+          onPress={() => navigation.navigate('EcrEpf')}
+        >
+          <MaterialIcons name="description" size={32} color="#4a6da7" />
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Generate ECR</Text>
+            <Text style={styles.cardDescription}>Create ECR for EPF</Text>
+          </View>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

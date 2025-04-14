@@ -12,9 +12,10 @@ import ScanUploadScreen from '../components/ScanUpload/ScanUploadScreen';
 import EditProfileModal from '../components/Profile/EditProfileModal';
 import InvoiceScreen from '../components/Invoice/InvoiceScreen';
 import InvoiceCreateScreen from '../components/Invoice/InvoiceCreateScreen';
+import EcrEpfScreen from '../components/ECR/EcrEpfScreen';
 import EWaybillCreateScreen from '../components/EWayBill/EWaybillCreateScreen.js';
 import SupportScreen from '../components/Support/SupportScreen'; 
-import ProfileScreen from '../components/Profile/ProfileScreen'; 
+import ProfileScreen from '../components/Profile/ProfileScreen';
 
 const Stack = createStackNavigator();
 
@@ -38,6 +39,7 @@ const AppNavigator = () => {
       <Stack.Screen name="Invoice" component={InvoiceScreen} />
       <Stack.Screen name="InvoiceCreate" component={InvoiceCreateScreen} />
       <Stack.Screen name="EWaybillCreate" component={EWaybillCreateScreen} />
+      <Stack.Screen name="EcrEpf" component={EcrEpfScreen} />
       <Stack.Screen 
         name="Support" 
         component={SupportScreen} 
