@@ -16,6 +16,9 @@ import EcrEpfScreen from '../components/ECR/EcrEpfScreen';
 import EWaybillCreateScreen from '../components/EWayBill/EWaybillCreateScreen.js';
 import SupportScreen from '../components/Support/SupportScreen'; 
 import ProfileScreen from '../components/Profile/ProfileScreen';
+import GSTScreen from '../components/ScanUpload/Gst.js';
+import ITRScreen from '../components/ScanUpload/Itr.js';
+import EPFFiling from '../components/ScanUpload/Pf.js';  // Update import name
 
 const Stack = createStackNavigator();
 
@@ -39,6 +42,13 @@ const AppNavigator = () => {
       <Stack.Screen name="Invoice" component={InvoiceScreen} />
       <Stack.Screen name="InvoiceCreate" component={InvoiceCreateScreen} />
       <Stack.Screen name="EWaybillCreate" component={EWaybillCreateScreen} />
+      <Stack.Screen name="GSTFiling" component={GSTScreen} />
+      <Stack.Screen name="ITRFiling" component={ITRScreen} />
+      <Stack.Screen 
+        name="EPFFiling" 
+        component={EPFFiling} 
+        options={{ title: 'EPF Filing' }} 
+      />
       <Stack.Screen name="EcrEpf" component={EcrEpfScreen} />
       <Stack.Screen 
         name="Support" 

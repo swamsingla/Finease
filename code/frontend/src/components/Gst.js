@@ -45,6 +45,8 @@ const GST = () => {
       // Prepare form data for Nanonets API
       const formData = new FormData();
       formData.append('file', file);
+      // add a print statement for file here
+      console.log("File to be sent to Nanonets:", file);
 
       // Call Nanonets API - REPLACE WITH YOUR ACTUAL MODEL ID AND API KEY
       const apiKey = "5aa26d66-fb76-11ef-a113-263262c841b0"; // Replace this
@@ -212,6 +214,7 @@ const GST = () => {
 
     try {
       // Send the form data to the backend
+      console.log("Submitting form data:", formData);
       await axios.post("http://localhost:5000/api/gst", formData);
       alert("GST data submitted successfully!");
       navigate("/"); // Navigate back to home or another page
