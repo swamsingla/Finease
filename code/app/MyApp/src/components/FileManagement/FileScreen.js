@@ -28,7 +28,7 @@ const FileScreen = () => {
       title: 'EPF ECR Generator',
       description: 'Create and download ECR file for EPF submissions',
       icon: 'briefcase-outline',
-      screen: 'EpfEcr'
+      screen: 'EcrEpf'
     }
   ];
 
@@ -58,13 +58,6 @@ const FileScreen = () => {
           </TouchableOpacity>
         ))}
       </View>
-
-      <TouchableOpacity
-        style={styles.viewAllButton}
-        onPress={() => navigation.navigate('FilingOptions')}
-      >
-        <Text style={styles.viewAllButtonText}>View All Filing Options</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 };
