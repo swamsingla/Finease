@@ -233,3 +233,25 @@ def save_extracted_data_to_specific_table(extracted_data, document_type, email):
             'success': False,
             'message': f"Error: {str(e)}"
         }
+
+def ask_gemini_llm(question):
+    """Send a question to Google Gemini LLM and return the answer text"""
+    import requests
+    import os
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        return "Gemini API key not set."
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "contents": [{"parts": [{"text": question}]}]
+    }
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=15)
+        if response.status_code == 200:
+            result = response.json()
+            return result['candidates'][0]['content']['parts'][0]['text']
+        else:
+            return f"Gemini API error: {response.status_code} {response.text}"
+    except Exception as e:
+        return f"Gemini API error: {str(e)}"
