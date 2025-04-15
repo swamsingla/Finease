@@ -143,7 +143,7 @@ const EcrEpfScreen = () => {
     }
     
     if (!currentEmployee.name || !currentEmployee.name.trim()) {
-      showMessage('Employee name is required', 'error');
+      showMessage('Employee name is required!', 'error');
       return;
     }
     
