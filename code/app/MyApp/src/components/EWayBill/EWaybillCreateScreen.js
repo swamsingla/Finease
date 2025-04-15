@@ -211,16 +211,16 @@ const EWaybillCreateScreen = ({ navigation }) => {
       setIsLoading(true);
       
       // Save to backend first
-      try {
-        const response = await axios.post(
-          'http://localhost:5000/api/invoice/eway/create',
-          ewayBillData
-        );
-        console.log('E-way bill saved:', response.data);
-      } catch (error) {
-        console.error('Error saving e-way bill:', error);
-        // Continue with PDF generation even if save fails
-      }
+      // try {
+      //   const response = await axios.post(
+      //     'http://localhost:5000/api/invoice/eway/create',
+      //     ewayBillData
+      //   );
+      //   console.log('E-way bill saved:', response.data);
+      // } catch (error) {
+      //   console.error('Error saving e-way bill:', error);
+      //   // Continue with PDF generation even if save fails
+      // }
 
       const htmlContent = generateHTML(ewayBillData);
       // Generate PDF file
