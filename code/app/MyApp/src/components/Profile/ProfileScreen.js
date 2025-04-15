@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import EditProfileModal from './EditProfileModal';
 import SupportScreen from '../Support/SupportScreen'; // Adjust the path as needed
+import Constants from 'expo-constants';
 
 const ProfileScreen = () => {
   // Added token from useAuth so we can use it for the fetch call.
@@ -31,7 +32,7 @@ const ProfileScreen = () => {
         setLoadingNotifications(true);
         setErrorNotifications('');
         const response = await fetch(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/auth/notifications`,
+          `${Constants.expoConfig.extra.apiUrl || 'http://localhost:5000/api'}/auth/notifications`,
           {
             headers: {
               'Authorization': `Bearer ${token}`

@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = Constants.expoConfig.extra.apiUrl || 'http://localhost:5000/api';
 
 const AuthScreen = () => {
   const { login } = useAuth();

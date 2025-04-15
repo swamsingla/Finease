@@ -16,6 +16,8 @@ import { Picker } from '@react-native-picker/picker';
 import { BarChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import Constants from 'expo-constants';
+
 
 
 
@@ -24,7 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 // CONSTANTS & CONFIGURATION
 // =============================================================================
 const BASE_URL =
-  process.env.REACT_APP_API_URL ||
+Constants.expoConfig.extra.apiUrl ||
   (Platform.OS === 'android'
     ? 'http://10.0.2.2:5000/api'
     : 'http://localhost:5000/api');
@@ -281,7 +283,7 @@ const DashboardScreen = () => {
       try {
         setNotifLoading(true);
         setNotifError("");
-        const notifURL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+        const notifURL = Constants.expoConfig.extra.apiUrl || "http://localhost:5000/api";
         console.log("Fetching notifications from:", `${notifURL}/auth/notifications`);
         const response = await fetch(`${notifURL}/auth/notifications`, {
           headers: {

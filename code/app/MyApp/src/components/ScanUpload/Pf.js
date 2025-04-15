@@ -14,6 +14,7 @@ import {
 import axios from 'axios';
 import { Base64 } from 'js-base64';
 import * as FileSystem from 'expo-file-system';
+import Constants from 'expo-constants';
 
 const EPFFiling = ({ route, navigation }) => {
   const { fileURI, fileName, isPDF } = route.params || {};
@@ -207,11 +208,14 @@ const EPFFiling = ({ route, navigation }) => {
     }
 
     try {
-      const apiUrl = Platform.OS === 'web' 
-        ? 'http://localhost:5000/api/epf'
-        : Platform.OS === 'android'
-          ? 'http://10.0.2.2:5000/api/epf'
-          : 'http://localhost:5000/api/epf';
+      // Use environment variable for API URL with platform-specific fallbacks
+      const baseApiUrl = Constants.expoConfig.extra.apiUrl ||
+        (Platform.OS === 'android'
+          ? 'http://10.0.2.2:5000/api'
+          : 'http://localhost:5000/api');
+      
+      // Append endpoint to base URL
+      const apiUrl = `${baseApiUrl}/epf`;
 
       const postData = {
         ...formData,

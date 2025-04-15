@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
+import Constants from 'expo-constants';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = Constants.expoConfig.extra.apiUrl || 'http://localhost:5000/api';
 
 const EpfEcrScreen = () => {
   const { user } = useAuth();

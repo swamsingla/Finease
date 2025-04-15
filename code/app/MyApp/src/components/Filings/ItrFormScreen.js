@@ -12,8 +12,9 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import Constants from 'expo-constants';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = Constants.expoConfig.extra.apiUrl || 'http://localhost:5000/api';
 
 const ItrFormScreen = () => {
   const navigation = useNavigation();

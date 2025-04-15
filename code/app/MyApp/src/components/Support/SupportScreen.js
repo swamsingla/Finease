@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import Constants from 'expo-constants';
 
 const SupportScreen = () => {
   const [question, setQuestion] = useState('');
@@ -22,7 +23,7 @@ const SupportScreen = () => {
 
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/chatbot`,
+        `${Constants.expoConfig.extra.apiUrl || 'http://localhost:5000'}/api/chatbot`,
         {
           method: 'POST',
           headers: {

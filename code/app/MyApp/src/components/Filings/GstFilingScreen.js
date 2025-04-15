@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Constants from 'expo-constants';
 
 // Import file system conditionally
 let FileSystem;
@@ -25,7 +26,7 @@ if (Platform.OS !== 'web') {
   MediaLibrary = require('expo-media-library');
 }
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = Constants.expoConfig.extra.apiUrl || 'http://localhost:5000/api';
 
 const GstFilingScreen = () => {
   const navigation = useNavigation();

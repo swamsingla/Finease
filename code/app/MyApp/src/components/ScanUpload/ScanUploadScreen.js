@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
+import Constants from 'expo-constants';
 
 // Simple text-based icon component
 const SimpleIcon = ({ name, size = 20, color = '#4B5563' }) => {
@@ -213,10 +214,14 @@ const ScanUploadPage = () => {
       
       console.log('Sending classification request for:', asset.fileName || 'unnamed file');
       
-      // Important: Don't set Content-Type header - let fetch set it with boundary automatically
-      const apiUrl = Platform.OS === 'android' 
-        ? 'http://10.0.2.2:5000/api/classify'  // For Android emulator
-        : 'http://localhost:5000/api/classify'; // For iOS simulator or web
+      // Use environment variable for API URL with platform-specific fallbacks
+      const baseApiUrl = Constants.expoConfig.extra.apiUrl ||
+        (Platform.OS === 'android'
+          ? 'http://10.0.2.2:5000/api'
+          : 'http://localhost:5000/api');
+      
+      // Append endpoint to base URL
+      const apiUrl = `${baseApiUrl}/classify`;
       
       console.log('Sending request to API URL:', apiUrl);
       
