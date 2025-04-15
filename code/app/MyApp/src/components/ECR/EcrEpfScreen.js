@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Platform, Clipboard } from 'react-native';
 import {
   View,
   Text,
@@ -196,7 +197,6 @@ const EcrEpfScreen = () => {
     );
   };
 
-  // Generate ECR text file
   const generateECR = async () => {
     // Validate company details
     if (!companyForm.establishmentId || !companyForm.establishmentName || !companyForm.wageMonth) {
@@ -209,21 +209,24 @@ const EcrEpfScreen = () => {
       return;
     }
     
-    // Generate ECR text content
-    let ecrContent = `ECR FILE FOR: ${companyForm.establishmentName}\n`;
-    ecrContent += `Establishment ID: ${companyForm.establishmentId}\n`;
-    ecrContent += `Wage Month: ${companyForm.wageMonth}\n\n`;
-    ecrContent += "UAN,Name,Gross Wages,EPF Wages,EPS Wages,EDLI Wages,EPF Contribution,EPS Contribution,EPF-EPS Diff\n";
+    // Generate ECR text content with ## separators
+    let ecrContent = '';
+    // ecrContent += `ECR FILE FOR: ${companyForm.establishmentName}\n`;
+    // ecrContent += `Establishment ID: ${companyForm.establishmentId}\n`;
+    // ecrContent += `Wage Month: ${companyForm.wageMonth}\n\n`;
+    
+    // Header row with ## separators
+    // ecrContent += "UAN##Name##Gross Wages##EPF Wages##EPS Wages##EDLI Wages##EPF Contribution##EPS Contribution##EPF-EPS Diff\n";
     
     // Calculate totals
     let totalEpfWages = 0;
     let totalEpfContribution = 0;
     let totalEpsContribution = 0;
     
-    // Add employee records
+    // Add employee records with ## separators
     employees.forEach(emp => {
-      ecrContent += `${emp.uan},${emp.name},${emp.grossWages},${emp.epfWages},${emp.epsWages},`;
-      ecrContent += `${emp.edliWages},${emp.epfContribution},${emp.epsContribution},${emp.epfEpsDifference}\n`;
+      ecrContent += `${emp.uan}##${emp.name}##${emp.grossWages}##${emp.epfWages}##${emp.epsWages}##`;
+      ecrContent += `${emp.edliWages}##${emp.epfContribution}##${emp.epsContribution}##${emp.epfEpsDifference}\n`;
       
       totalEpfWages += Number(emp.epfWages) || 0;
       totalEpfContribution += Number(emp.epfContribution) || 0;
@@ -231,23 +234,70 @@ const EcrEpfScreen = () => {
     });
     
     // Add totals
-    ecrContent += `\nTotal Employees: ${employees.length}\n`;
-    ecrContent += `Total EPF Wages: ₹${totalEpfWages}\n`;
-    ecrContent += `Total EPF Contribution: ₹${totalEpfContribution}\n`;
-    ecrContent += `Total EPS Contribution: ₹${totalEpsContribution}\n`;
-    ecrContent += `Total EPF-EPS Difference: ₹${totalEpfContribution - totalEpsContribution}\n`;
+    // ecrContent += `\nTotal Employees: ${employees.length}\n`;
+    // ecrContent += `Total EPF Wages: ₹${totalEpfWages}\n`;
+    // ecrContent += `Total EPF Contribution: ₹${totalEpfContribution}\n`;
+    // ecrContent += `Total EPS Contribution: ₹${totalEpsContribution}\n`;
+    // ecrContent += `Total EPF-EPS Difference: ₹${totalEpfContribution - totalEpsContribution}\n`;
     
     // Save the data first
     await saveBatchData();
     
-    // Share the ECR file
     try {
-      await Share.share({
-        message: ecrContent,
-        title: `ECR_${companyForm.establishmentId}_${companyForm.wageMonth.replace(/\s/g, '_')}.txt`
-      });
+      // Create a filename
+      const fileName = `ECR_${companyForm.establishmentId}_${companyForm.wageMonth.replace(/\s/g, '_')}.txt`;
+      
+      // Check if running on web
+      if (Platform.OS === 'web') {
+        // For web, create a downloadable link
+        const blob = new Blob([ecrContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showMessage('ECR file downloaded successfully', 'success');
+      } else {
+        // For mobile platforms, try different methods
+        try {
+          // Try using Share API first
+          await Share.share({
+            message: ecrContent,
+            title: fileName
+          });
+          showMessage('ECR content shared successfully', 'success');
+        } catch (shareError) {
+          // If Share API fails, show the content for copy-paste
+          Alert.alert(
+            'ECR Generated',
+            'Share is not available. Copy the ECR content from below:',
+            [
+              {
+                text: 'Copy to Clipboard',
+                onPress: () => {
+                  Clipboard.setString(ecrContent);
+                  showMessage('ECR content copied to clipboard', 'success');
+                }
+              },
+              { text: 'OK', style: 'cancel' }
+            ],
+            { cancelable: true }
+          );
+        }
+      }
     } catch (error) {
-      showMessage('Error sharing ECR file', 'error');
+      console.error('Error generating ECR:', error);
+      showMessage('Error generating ECR: ' + (error.message || 'Unknown error'), 'error');
+      
+      // Last resort: Alert with error message
+      Alert.alert(
+        'Error Generating ECR',
+        'Could not generate file. Please try again later.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
