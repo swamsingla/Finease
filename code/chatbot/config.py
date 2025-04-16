@@ -12,6 +12,9 @@ TWILIO_WHATSAPP_NUMBER = os.getenv('TWILIO_WHATSAPP_NUMBER')
 # Backend API endpoint for classification
 BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:5000')
 
+# Gemini API configuration
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
 # Nanonets API credentials
 NANONETS_API_KEY = "5aa26d66-fb76-11ef-a113-263262c841b0"
 GST_MODEL_ID = "71087ee9-2900-4dd5-a53d-67efe247846c"
@@ -25,7 +28,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 MEDIA_FOLDER = os.path.join(APP_DIR, 'media')
 
 # Document type options
-DOCUMENT_OPTIONS = ['gst_filing', 'itr_filing', 'pf_filing', 'classify', 'authenticate']
+DOCUMENT_OPTIONS = ['gst_filing', 'itr_filing', 'pf_filing', 'classify', 'authenticate', 'ask_gemini']
 
 # Menu options with emojis and descriptions
 MENU_OPTIONS = {
@@ -54,6 +57,12 @@ MENU_OPTIONS = {
         'description': 'Analyze and classify your document'
     },
     '5': {
+        'name': 'Ask FinEase Assistant',
+        'key': 'ask_gemini',
+        'emoji': '🤖',
+        'description': 'Ask questions about document filing'
+    },
+    '6': {
         'name': 'Logout',
         'key': 'logout',
         'emoji': '🔒',

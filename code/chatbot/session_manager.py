@@ -16,7 +16,8 @@ def init_session(user_id):
                 'user_id': None,
                 'token': None,
                 'email': None
-            }
+            },
+            'chat_history': []  # Add chat history tracking for Gemini
         }
     return user_sessions[user_id]
 
@@ -40,10 +41,13 @@ def update_session(user_id, state=None, selected_option=None):
 def reset_session(user_id):
     """Reset a user's session to initial state but preserve auth data"""
     auth_data = user_sessions.get(user_id, {}).get('auth', {})
+    chat_history = user_sessions.get(user_id, {}).get('chat_history', [])
+    
     user_sessions[user_id] = {
         'state': 'initial',
         'selected_option': None,
-        'auth': auth_data
+        'auth': auth_data,
+        'chat_history': chat_history  # Preserve chat history when resetting session
     }
     return user_sessions[user_id]
 
@@ -109,3 +113,40 @@ def get_user_email(user_id):
     """Get the email of the authenticated user"""
     session = get_session(user_id)
     return session['auth'].get('email')
+
+# New functions for chat history management
+def add_to_chat_history(user_id, role, content):
+    """Add a message to the user's chat history"""
+    session = get_session(user_id)
+    
+    # Initialize chat_history if not present (for backward compatibility)
+    if 'chat_history' not in session:
+        session['chat_history'] = []
+    
+    # Add the message to chat history
+    session['chat_history'].append({
+        'role': role,  # 'user' or 'assistant'
+        'content': content
+    })
+    
+    # Keep only the last 10 messages to prevent unlimited growth
+    if len(session['chat_history']) > 10:
+        session['chat_history'] = session['chat_history'][-10:]
+    
+    return session
+
+def get_chat_history(user_id):
+    """Get the current chat history for a user"""
+    session = get_session(user_id)
+    
+    # Initialize chat_history if not present (for backward compatibility)
+    if 'chat_history' not in session:
+        session['chat_history'] = []
+    
+    return session['chat_history']
+
+def clear_chat_history(user_id):
+    """Clear the chat history for a user"""
+    session = get_session(user_id)
+    session['chat_history'] = []
+    return session

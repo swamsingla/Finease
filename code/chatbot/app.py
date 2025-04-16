@@ -4,6 +4,7 @@ from twilio.rest import Client
 import os
 import time
 import re
+import json
 
 # Import our modules
 import config
@@ -30,12 +31,26 @@ from formatters import (
     format_classification_result
 )
 import session_manager
+from gemini_helper import (
+    init_gemini,
+    get_chat_response,
+    analyze_document_content,
+    validate_document
+)
 
 # Initialize Twilio client
 client = Client(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN)
 
 # Initialize Flask app
 app = Flask(__name__)
+
+# Initialize Gemini API
+if config.GEMINI_API_KEY:
+    init_gemini(config.GEMINI_API_KEY)
+    from gemini_helper import get_gemini_models
+    get_gemini_models()  # Log available models
+else:
+    print("WARNING: Gemini API key not found. Gemini features will be disabled.")
 
 # Create media folders if they don't exist
 os.makedirs(config.MEDIA_FOLDER, exist_ok=True)
@@ -67,7 +82,7 @@ def webhook():
     user_state = session['state']
     
     # Check for logout command first
-    if incoming_msg.lower() == '5':
+    if incoming_msg.lower() == '6':
         session_manager.logout(sender)
         resp.message("🔒 *You have been logged out*\n\nYour WhatsApp number is no longer linked to your account.")
         resp.message(format_auth_menu())
@@ -172,6 +187,36 @@ def webhook():
                         result_message = format_classification_result(classification_result)
                         resp.message(result_message)
                         
+                        # If Gemini API is available, provide additional analysis
+                        if config.GEMINI_API_KEY:
+                            document_type = classification_result.get('classification', 'document').lower()
+                            
+                            # Send a message that Gemini is analyzing the document
+                            resp.message("🤖 *Using AI to analyze your document...*")
+                            
+                            try:
+                                # For PDFs or images, we would need OCR first
+                                # Here we'll simulate with a simple example
+                                sample_text = f"This is a sample {document_type} document for analysis."
+                                analysis = analyze_document_content(sample_text, document_type)
+                                
+                                # Send the analysis in chunks if it's too long
+                                if len(analysis) > 1500:  # WhatsApp character limit is around 4096
+                                    chunks = [analysis[i:i+1500] for i in range(0, len(analysis), 1500)]
+                                    resp.message(f"🔍 *AI Document Analysis* (Part 1 of {len(chunks)})\n\n{chunks[0]}")
+                                    
+                                    # Send remaining chunks using direct messaging
+                                    for i, chunk in enumerate(chunks[1:], 2):
+                                        client.messages.create(
+                                            body=f"🔍 *AI Document Analysis* (Part {i} of {len(chunks)})\n\n{chunk}",
+                                            from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                            to=sender
+                                        )
+                                else:
+                                    resp.message(f"🔍 *AI Document Analysis*\n\n{analysis}")
+                            except Exception as e:
+                                print(f"Error with Gemini analysis: {e}")
+                        
                         # Save the file to the database
                         save_to_database(
                             file_path=file_path,
@@ -231,6 +276,22 @@ def webhook():
                                 # Extract data with user email
                                 extraction_result = extract_gst_data(file_path, user_email)
                                 print(f"GST Extraction result: {extraction_result}")
+                                
+                                # If Gemini API is available, validate extracted data
+                                if config.GEMINI_API_KEY and not "error" in extraction_result:
+                                    try:
+                                        # Validate the extracted data using Gemini
+                                        validation_result = validate_document(json.dumps(extraction_result, indent=2), "GST")
+                                        
+                                        # If there are any validation issues, send them to the user
+                                        if "issue" in validation_result.lower() or "missing" in validation_result.lower():
+                                            client.messages.create(
+                                                body=f"⚠️ *Validation Note*\n\n{validation_result}",
+                                                from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                                to=sender
+                                            )
+                                    except Exception as e:
+                                        print(f"Gemini validation error: {e}")
                                 
                                 # Format and send the result
                                 gst_message = format_gst_data_for_whatsapp(extraction_result)
@@ -351,6 +412,22 @@ def webhook():
                                 extraction_result = extract_itr_data(file_path, user_email)
                                 print(f"ITR Extraction result: {extraction_result}")
                                 
+                                # If Gemini API is available, validate extracted data
+                                if config.GEMINI_API_KEY and not "error" in extraction_result:
+                                    try:
+                                        # Validate the extracted data using Gemini
+                                        validation_result = validate_document(json.dumps(extraction_result, indent=2), "ITR")
+                                        
+                                        # If there are any validation issues, send them to the user
+                                        if "issue" in validation_result.lower() or "missing" in validation_result.lower():
+                                            client.messages.create(
+                                                body=f"⚠️ *Validation Note*\n\n{validation_result}",
+                                                from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                                to=sender
+                                            )
+                                    except Exception as e:
+                                        print(f"Gemini validation error: {e}")
+                                
                                 # Format and send the result
                                 itr_message = format_itr_data_for_whatsapp(extraction_result)
                                 client.messages.create(
@@ -438,6 +515,22 @@ def webhook():
                                 # Extract data with user email
                                 extraction_result = extract_epf_data(file_path, user_email)
                                 print(f"PF Extraction result: {extraction_result}")
+                                
+                                # If Gemini API is available, validate extracted data
+                                if config.GEMINI_API_KEY and not "error" in extraction_result:
+                                    try:
+                                        # Validate the extracted data using Gemini
+                                        validation_result = validate_document(json.dumps(extraction_result, indent=2), "EPF")
+                                        
+                                        # If there are any validation issues, send them to the user
+                                        if "issue" in validation_result.lower() or "missing" in validation_result.lower():
+                                            client.messages.create(
+                                                body=f"⚠️ *Validation Note*\n\n{validation_result}",
+                                                from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                                to=sender
+                                            )
+                                    except Exception as e:
+                                        print(f"Gemini validation error: {e}")
                                 
                                 # Format and send the result
                                 epf_message = format_epf_data_for_whatsapp(extraction_result)
@@ -546,11 +639,17 @@ def webhook():
         # Handle text messages based on user state
         if user_state == 'awaiting_option':
             # Handle logout option
-            if incoming_msg == '5':
+            if incoming_msg == '6':
                 session_manager.logout(sender)
                 resp.message("🔒 *You have been logged out*\n\nYour WhatsApp number is no longer linked to your account.")
                 resp.message(format_auth_menu())
                 session_manager.update_session(sender, state='awaiting_auth')
+                return str(resp)
+            # Handle Ask FinEase Assistant option
+            elif incoming_msg == '5':
+                # Set state to chat with Gemini
+                session_manager.update_session(sender, state='chatting_with_gemini')
+                resp.message("🤖 *FinEase AI Assistant*\n\nI'm ready to answer your questions about GST, ITR, or EPF filings. What can I help you with today?\n\nTo return to the main menu, just type 'menu'.")
                 return str(resp)
             # User should select one of the options by number
             elif incoming_msg in config.MENU_OPTIONS:
@@ -564,6 +663,11 @@ def webhook():
                     resp.message("🔒 *You have been logged out*\n\nYour WhatsApp number is no longer linked to your account.")
                     resp.message(format_auth_menu())
                     session_manager.update_session(sender, state='awaiting_auth')
+                # Handle Ask FinEase Assistant option
+                elif selected_option == 'ask_gemini':
+                    # Set state to chat with Gemini
+                    session_manager.update_session(sender, state='chatting_with_gemini')
+                    resp.message("🤖 *FinEase AI Assistant*\n\nI'm ready to answer your questions about GST, ITR, or EPF filings. What can I help you with today?\n\nTo return to the main menu, just type 'menu'.")
                 else:
                     session_manager.update_session(
                         sender, 
@@ -574,7 +678,7 @@ def webhook():
                     resp.message(f"{option_emoji} You've selected *{option_name}*.\n\n📤 Please upload your document now.")
             else:
                 # Invalid option selected, show menu again
-                resp.message(f"❗ *Please select a valid option*\n\nReply with a number from 1-{len(config.MENU_OPTIONS)} to select a filing option.")
+                resp.message(f"❗ *Please select a valid option*\n\nReply with a number from 1-{len(config.MENU_OPTIONS)} to select an option.")
                 resp.message(format_menu())
         
         elif user_state == 'awaiting_auth':
@@ -585,6 +689,55 @@ def webhook():
                 resp.message(format_auth_menu())
             else:
                 resp.message("🔑 To authenticate, please use the format: `login:email:password`")
+        
+        elif user_state == 'chatting_with_gemini':
+            # Check for returning to menu
+            if incoming_msg.lower() in ['menu', 'back', 'exit', 'quit']:
+                session_manager.update_session(sender, state='awaiting_option')
+                resp.message("Returning to the main menu...")
+                resp.message(format_menu())
+            else:
+                # Store user message in chat history
+                session_manager.add_to_chat_history(sender, 'user', incoming_msg)
+                
+                is_authenticated = session_manager.is_authenticated(sender)
+                
+                if config.GEMINI_API_KEY:
+                    try:
+                        # Get chat history to provide context
+                        chat_history = session_manager.get_chat_history(sender)
+                        
+                        # Send the user's query to Gemini
+                        gemini_response = get_chat_response(incoming_msg, chat_history, is_authenticated)
+                        
+                        # Store AI response in chat history
+                        session_manager.add_to_chat_history(sender, 'assistant', gemini_response)
+                        
+                        # Send the response
+                        # If the response is too long, split it into multiple messages
+                        if len(gemini_response) > 1500:  # WhatsApp has a character limit
+                            chunks = [gemini_response[i:i+1500] for i in range(0, len(gemini_response), 1500)]
+                            resp.message(f"🤖 {chunks[0]}")
+                            
+                            # Send remaining chunks directly
+                            for chunk in chunks[1:]:
+                                client.messages.create(
+                                    body=f"🤖 {chunk}",
+                                    from_=f"whatsapp:{config.TWILIO_WHATSAPP_NUMBER}",
+                                    to=sender
+                                )
+                        else:
+                            resp.message(f"🤖 {gemini_response}")
+                        
+                    except Exception as e:
+                        print(f"Error with Gemini chat: {e}")
+                        resp.message("⚠️ I'm having trouble connecting to my knowledge base. Please try again later.")
+                else:
+                    # Gemini API key not available
+                    resp.message("⚠️ AI assistant is currently unavailable. Please try again later.")
+                    # Return to menu
+                    session_manager.update_session(sender, state='awaiting_option')
+                    resp.message(format_menu())
         
         else:
             # For any other state, show authentication message if not authenticated
