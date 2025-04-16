@@ -9,9 +9,10 @@ import {
   ActivityIndicator 
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import Constants from 'expo-constants';
 
 const EditProfileModal = ({ visible, onClose }) => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, token } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     companyName: '',
@@ -30,7 +31,7 @@ const EditProfileModal = ({ visible, onClose }) => {
         gstin: user.gstin || '',
       });
     }
-  }, [visible]);
+  }, [visible, user]);
 
   const handleChange = (name, value) => {
     setFormData(prev => ({
@@ -44,7 +45,27 @@ const EditProfileModal = ({ visible, onClose }) => {
     setError('');
     setSuccess('');
     try {
-      await updateUser(formData);
+      // First, update the profile on the backend
+      const apiUrl = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/auth/update`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData),
+      });
+      
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Update failed');
+      }
+      
+      const data = await response.json();
+      
+      // Then, update the user in the auth context
+      await updateUser(data.user);
+      
       setSuccess('Profile updated successfully!');
       // Wait briefly to show the success message before closing.
       setTimeout(() => {

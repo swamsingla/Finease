@@ -116,13 +116,10 @@ const ProfileScreen = () => {
       </View>
 
       {/* Edit Profile Modal */}
-      <Modal
-        visible={showEditProfile}
-        animationType="slide"
-        onRequestClose={() => setShowEditProfile(false)}
-      >
-        <EditProfileModal onClose={() => setShowEditProfile(false)} />
-      </Modal>
+      <EditProfileModal 
+        visible={showEditProfile} 
+        onClose={() => setShowEditProfile(false)} 
+      />
 
       {/* Support Modal */}
       <Modal
