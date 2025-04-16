@@ -23,7 +23,7 @@ const SupportScreen = () => {
 
     try {
       const response = await fetch(
-        `${Constants.expoConfig.extra.apiUrl || 'http://localhost:5000'}/api/chatbot`,
+        `${Constants.expoConfig.extra.apiUrl || 'http://localhost:5000/api'}/chatbot`,
         {
           method: 'POST',
           headers: {
