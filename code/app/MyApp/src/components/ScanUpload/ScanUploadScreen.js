@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Dimensions
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useNavigation } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
@@ -62,63 +63,29 @@ const ScanUploadPage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [classification, setClassification] = useState(null);
   const [classificationLoading, setClassificationLoading] = useState(false);
+  const [webFile, setWebFile] = useState(null); // Store the File object for web
+  const [showWebCamera, setShowWebCamera] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  
+  // Create refs for the hidden file inputs (web only)
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   
   // Function to handle document picking from device storage
   const handleDocumentPick = async () => {
     setIsUploading(true);
     
     try {
-      if (Platform.OS === 'web' && launchImageLibrary) {
-        // For web platform, use react-native-image-picker as in the original code
-        const options = {
-          mediaType: 'mixed',
-          includeBase64: false,
-          maxHeight: 2000,
-          maxWidth: 2000,
-          selectionLimit: 1,
-          type: 'library',
-        };
-        
-        launchImageLibrary(options, (response) => {
-          setIsUploading(false);
-          
-          if (response.didCancel) {
-            console.log('User cancelled document picker');
-            return;
-          }
-          
-          if (response.errorCode) {
-            console.error('ImagePicker Error: ', response.errorMessage);
-            Alert.alert('Error', 'Failed to pick document: ' + response.errorMessage);
-            return;
-          }
-          
-          if (response.assets && response.assets.length > 0) {
-            const asset = response.assets[0];
-            const uri = asset.uri;
-            const type = asset.type;
-            const name = asset.fileName || 'Document';
-            
-            console.log('Selected file:', { uri, type, name });
-            
-            setFileURI(uri);
-            setFileName(name);
-            setIsPDF(type && type.includes('pdf'));
-            
-            // Classify the document
-            console.log('DETAILED URI INFO:', {
-              uri: asset.uri,
-              uriStartsWith: asset.uri.substring(0, 30),
-              uriLength: asset.uri.length
-            });
-            classifyDocument(asset);
-          } else {
-            Alert.alert('Error', 'No file was selected');
-          }
-        });
+      if (Platform.OS === 'web') {
+        // For web: Use a hidden file input element
+        if (fileInputRef.current) {
+          fileInputRef.current.click();
+        }
+        setIsUploading(false);
       } else {
-        // For Android with Expo Go, use Expo's ImagePicker
-        // First, request permission
+        // For Android/iOS with Expo Go - keep existing code as it works perfectly
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Permission needed', 'Please grant camera roll permissions to upload documents');
@@ -126,7 +93,6 @@ const ScanUploadPage = () => {
           return;
         }
         
-        // Launch image picker for images
         const result = await DocumentPicker.getDocumentAsync({
           type: ['image/*', 'application/pdf'],
           copyToCacheDirectory: true,
@@ -142,11 +108,9 @@ const ScanUploadPage = () => {
         if (result.assets && result.assets.length > 0) {
           const asset = result.assets[0];
           const uri = asset.uri;
-          // Determine file type from uri
           const mimeType = asset.mimeType || 'application/octet-stream';
           const isPdf = mimeType === 'application/pdf';
           
-          // Create an asset-like object for compatibility with the classify function
           const assetForClassify = {
             uri: uri,
             type: mimeType,
@@ -157,10 +121,8 @@ const ScanUploadPage = () => {
           
           setFileURI(uri);
           setFileName(assetForClassify.fileName);
-          // FIX: Use the isPdf variable we defined above instead of the undefined fileType variable
           setIsPDF(isPdf);
           
-          // Classify the document
           classifyDocument(assetForClassify);
         } else {
           Alert.alert('Error', 'No file was selected');
@@ -173,51 +135,77 @@ const ScanUploadPage = () => {
     }
   };
   
+  // Handle file selection for web platform
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const fileType = file.type;
+    const isPdf = fileType.includes('pdf');
+    
+    // Create URL for preview
+    const fileUrl = URL.createObjectURL(file);
+    
+    setFileURI(fileUrl);
+    setFileName(file.name);
+    setIsPDF(isPdf);
+    setWebFile(file); // Store the actual File object for web
+    
+    // Create an object compatible with our classify function
+    const assetForClassify = {
+      uri: fileUrl,
+      type: fileType,
+      fileName: file.name,
+      webFile: file // Keep the original File object for web uploads
+    };
+    
+    classifyDocument(assetForClassify);
+  };
+  
   // Function to handle camera capture
   const handleCameraCapture = async () => {
     try {
-      if (Platform.OS === 'web' && launchCamera) {
-        // Use react-native-image-picker for web as in the original code
-        const options = {
-          mediaType: 'photo',
-          includeBase64: false,
-          maxHeight: 2000,
-          maxWidth: 2000,
-          saveToPhotos: true,
-          quality: 0.8,
-        };
-        
-        launchCamera(options, (response) => {
-          if (response.didCancel) {
-            console.log('User cancelled camera');
-            return;
-          }
-          
-          if (response.errorCode) {
-            console.error('Camera Error: ', response.errorMessage);
-            Alert.alert('Error', 'Failed to capture image: ' + response.errorMessage);
-            return;
-          }
-          
-          if (response.assets && response.assets.length > 0) {
-            const asset = response.assets[0];
-            setFileURI(asset.uri);
-            setFileName('Camera_' + new Date().toISOString().split('T')[0]);
-            setIsPDF(false);
-            console.log('DETAILED URI INFO:', {
-              uri: asset.uri,
-              uriStartsWith: asset.uri.substring(0, 30),
-              uriLength: asset.uri.length
+      if (Platform.OS === 'web') {
+        // For web: Use direct MediaStream API
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          try {
+            // Request camera access
+            const stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: 'environment' },
+              audio: false
             });
-            // Classify the document
-            classifyDocument(asset);
-          } else {
-            Alert.alert('Error', 'No image was captured');
+            
+            // Show camera UI
+            setShowWebCamera(true);
+            setCameraStream(stream);
+            
+            // Connect stream to video element when component mounts
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+              }
+            }, 100);
+          } catch (error) {
+            console.error('Error accessing camera:', error);
+            Alert.alert(
+              'Camera Access Error',
+              'Could not access your camera. Please check permissions and try again.',
+              [{ text: 'OK' }]
+            );
           }
-        });
+        } else if (cameraInputRef.current) {
+          // Fall back to input method if MediaStream API is not available
+          cameraInputRef.current.setAttribute('capture', 'environment');
+          cameraInputRef.current.click();
+        } else {
+          Alert.alert(
+            'Camera Not Supported',
+            'Your browser does not support camera access. Please try using Chrome or Safari.',
+            [{ text: 'OK' }]
+          );
+        }
       } else {
-        // For Android with Expo Go, use Expo's Camera
-        // First check for camera permissions
+        // For Android/iOS - existing code - leave as is
         const { status } = await Camera.requestCameraPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Permission needed', 'Please grant camera permissions to take a photo');
@@ -262,59 +250,109 @@ const ScanUploadPage = () => {
     }
   };
 
+  // Handle web camera input change
+  const handleCameraInputChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const fileUrl = URL.createObjectURL(file);
+    
+    setFileURI(fileUrl);
+    setFileName('Camera_' + new Date().toISOString().split('T')[0] + '.jpg');
+    setIsPDF(false);
+    setWebFile(file);
+    
+    // Create asset for classification
+    const assetForClassify = {
+      uri: fileUrl,
+      type: file.type,
+      fileName: 'Camera_' + new Date().toISOString().split('T')[0] + '.jpg',
+      webFile: file
+    };
+    
+    classifyDocument(assetForClassify);
+  };
+
+  // Function to take photo from web camera
+  const captureWebPhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    // Set canvas dimensions to video dimensions
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw video frame to canvas
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convert to blob/file
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        Alert.alert('Error', 'Failed to capture image');
+        return;
+      }
+      
+      // Create file from blob
+      const file = new File([blob], 'camera_capture.jpg', { type: 'image/jpeg' });
+      const fileUrl = URL.createObjectURL(blob);
+      
+      // Close camera
+      closeWebCamera();
+      
+      // Set captured image
+      setFileURI(fileUrl);
+      setFileName('Camera_' + new Date().toISOString().split('T')[0] + '.jpg');
+      setIsPDF(false);
+      setWebFile(file);
+      
+      // Create asset-like object for classification
+      const assetForClassify = {
+        uri: fileUrl,
+        type: 'image/jpeg',
+        fileName: 'Camera_' + new Date().toISOString().split('T')[0] + '.jpg',
+        webFile: file
+      };
+      
+      // Classify document
+      classifyDocument(assetForClassify);
+    }, 'image/jpeg', 0.8);
+  };
+
+  // Close web camera function
+  const closeWebCamera = () => {
+    if (cameraStream) {
+      // Stop all tracks in the stream
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setShowWebCamera(false);
+  };
+
   // Function to classify document
   const classifyDocument = async (asset) => {
     setClassificationLoading(true);
     setClassification(null);
     
     try {
-      // Create form data for the API request
       const formData = new FormData();
       
-      // Debug: Log asset details before appending to FormData
       console.log('Asset details for debugging:', {
         uri: asset.uri,
         type: asset.type || 'image/jpeg',
         fileName: asset.fileName,
-        fileSize: asset.fileSize,
       });
-      
-      // Determine if the URI is a base64 data URL
-      const isBase64DataUrl = asset.uri && asset.uri.startsWith('data:');
-      console.log('Is base64 data URL:', isBase64DataUrl);
       
       let fileToUpload;
       
-      if (isBase64DataUrl && Platform.OS === 'web') {
-        // For web with base64 data URL: Convert to Blob
-        console.log('Converting base64 data URL to Blob for web upload');
-        
-        try {
-          // Extract the base64 data (remove the data:image/png;base64, prefix)
-          const base64Data = asset.uri.split(',')[1];
-          const contentType = asset.uri.split(';')[0].split(':')[1] || 'image/jpeg';
-          
-          // Convert base64 to Blob using fetch API (works in browser environment)
-          const response = await fetch(`data:${contentType};base64,${base64Data}`);
-          const blob = await response.blob();
-          
-          console.log('Successfully created Blob from base64 data', {
-            size: blob.size,
-            type: blob.type
-          });
-          
-          // Use the Blob directly with a filename
-          fileToUpload = new File(
-            [blob], 
-            asset.fileName || `image.${contentType.split('/')[1]}`,
-            { type: contentType }
-          );
-        } catch (e) {
-          console.error('Error converting base64 to Blob:', e);
-          throw new Error('Failed to process image data');
-        }
+      if (Platform.OS === 'web' && asset.webFile) {
+        // For web: Use the File object directly
+        fileToUpload = asset.webFile;
+        console.log('Using web File object for upload:', fileToUpload.name, fileToUpload.type, fileToUpload.size);
       } else {
-        // Normal case: Use the asset URI directly
+        // For mobile
         fileToUpload = {
           uri: asset.uri,
           type: asset.type || 'image/jpeg',
@@ -322,16 +360,8 @@ const ScanUploadPage = () => {
         };
       }
       
-      // Debug: Log file object being appended to FormData
-      console.log('File object being appended to FormData:', 
-        isBase64DataUrl ? { type: fileToUpload.type, name: fileToUpload.name, isBlob: true } : fileToUpload
-      );
-      
-      // Append the file with its uri, type, and name
+      // Append the file to FormData
       formData.append('file', fileToUpload);
-      
-      // Debug: Try to inspect FormData keys (limited in React Native)
-      console.log('FormData created with file key. Cannot directly inspect contents in React Native.');
       
       console.log('Sending classification request for:', asset.fileName || 'unnamed file');
       
@@ -341,7 +371,6 @@ const ScanUploadPage = () => {
           ? 'http://10.0.2.2:5000/api'
           : 'http://localhost:5000/api');
       
-      // Append endpoint to base URL
       const apiUrl = `${baseApiUrl}/classify`;
       
       console.log('Sending request to API URL:', apiUrl);
@@ -350,7 +379,6 @@ const ScanUploadPage = () => {
       const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
-        // Do NOT include Content-Type header here - React Native will add it with proper boundary
       });
       
       if (!response.ok) {
@@ -380,7 +408,7 @@ const ScanUploadPage = () => {
       // In development mode, use mock data for testing UI
       if (__DEV__) {
         console.log('DEV MODE: Setting mock classification for testing');
-        // Uncomment the next line to test UI with mock data during development
+        // Uncomment for testing
         // setClassification('PF Filing');
       }
       
@@ -398,6 +426,7 @@ const ScanUploadPage = () => {
     setFileName(null);
     setIsPDF(false);
     setClassification(null);
+    setWebFile(null);
   };
 
   const handleContinue = () => {
@@ -422,141 +451,221 @@ const ScanUploadPage = () => {
     }
   };
 
+  // Render PDF viewer for web
+  const renderPDFPreview = () => {
+    if (Platform.OS === 'web' && isPDF && fileURI) {
+      return (
+        <iframe 
+          src={fileURI} 
+          style={{
+            width: '100%',
+            height: 500,
+            border: 'none',
+            borderRadius: 8,
+          }}
+          title="PDF Preview"
+        />
+      );
+    } else if (isPDF) {
+      // Fallback for mobile or when PDF can't be embedded
+      return (
+        <View style={styles.pdfPlaceholder}>
+          <SimpleIcon name="pdf" size={48} color="#2563EB" />
+          <Text style={styles.pdfText}>PDF Document</Text>
+          {fileName && <Text style={styles.fileNameText}>{fileName}</Text>}
+        </View>
+      );
+    } else {
+      // Image preview
+      return (
+        <>
+          <Image 
+            source={{ uri: fileURI }} 
+            style={styles.imagePreview} 
+            resizeMode="contain" 
+          />
+          {fileName && <Text style={styles.fileNameText}>{fileName}</Text>}
+        </>
+      );
+    }
+  };
+
   // Render main upload screen
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Scan or Upload</Text>
-        
-        {/* Scan Document Card */}
-        <TouchableOpacity 
-          style={styles.card} 
-          onPress={handleCameraCapture}
-          activeOpacity={0.7}
-          disabled={isUploading || classificationLoading}
-        >
-          <View style={styles.cardContent}>
-            <SimpleIcon name="camera" size={24} color="#4B5563" />
-            <View style={styles.textContainer}>
-              <Text style={styles.cardTitle}>Scan Document</Text>
-              <Text style={styles.cardDescription}>Use your camera to scan a document</Text>
+      {/* Hidden file inputs for web platform */}
+      {Platform.OS === 'web' && (
+        <>
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            accept="image/*,application/pdf"
+            onChange={handleFileChange}
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            style={{ display: 'none' }}
+            accept="image/*"
+            capture="environment"
+            onChange={handleCameraInputChange}
+          />
+        </>
+      )}
+      
+      {/* Web Camera UI */}
+      {Platform.OS === 'web' && showWebCamera && (
+        <View style={styles.webCameraContainer}>
+          <View style={styles.webCameraContent}>
+            <video 
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={styles.videoPreview}
+            />
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+            
+            <View style={styles.webCameraControls}>
+              <TouchableOpacity 
+                style={styles.captureButton}
+                onPress={captureWebPhoto}
+              >
+                <View style={styles.captureButtonInner} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={closeWebCamera}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </TouchableOpacity>
+        </View>
+      )}
+      
+      {/* Only show scroll content when web camera is not active */}
+      {!showWebCamera && (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.title}>Scan or Upload</Text>
         
-        {/* Upload Files Card */}
-        <TouchableOpacity 
-          style={styles.card} 
-          onPress={handleDocumentPick}
-          activeOpacity={0.7}
-          disabled={isUploading || classificationLoading}
-        >
-          <View style={styles.cardContent}>
-            <SimpleIcon name="upload" size={24} color="#4B5563" />
-            <View style={styles.textContainer}>
-              <Text style={styles.cardTitle}>Upload files</Text>
-              <Text style={styles.cardDescription}>Select files from your device</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Upload Progress */}
-        {isUploading && (
-          <View style={styles.progressContainer}>
-            <Text style={styles.progressText}>Accessing file picker...</Text>
-            <ActivityIndicator size="large" color="#2563EB" />
-          </View>
-        )}
-
-        {/* Classification Loading */}
-        {classificationLoading && (
-          <View style={styles.progressContainer}>
-            <Text style={styles.progressText}>Classifying document...</Text>
-            <ActivityIndicator size="large" color="#2563EB" />
-          </View>
-        )}
-
-        {/* Display Uploaded File */}
-        {fileURI && !isUploading && (
-          <View style={styles.previewContainer}>
-            {isPDF ? (
-              <View style={styles.pdfPlaceholder}>
-                <SimpleIcon name="pdf" size={48} color="#2563EB" />
-                <Text style={styles.pdfText}>PDF Document</Text>
-                {fileName && <Text style={styles.fileNameText}>{fileName}</Text>}
+          {/* Scan Document Card */}
+          <TouchableOpacity 
+            style={styles.card} 
+            onPress={handleCameraCapture}
+            activeOpacity={0.7}
+            disabled={isUploading || classificationLoading}
+          >
+            <View style={styles.cardContent}>
+              <SimpleIcon name="camera" size={24} color="#4B5563" />
+              <View style={styles.textContainer}>
+                <Text style={styles.cardTitle}>Scan Document</Text>
+                <Text style={styles.cardDescription}>Use your camera to scan a document</Text>
               </View>
-            ) : (
-              <>
-                <Image 
-                  source={{ uri: fileURI }} 
-                  style={styles.imagePreview} 
-                  resizeMode="contain" 
-                />
-                {fileName && <Text style={styles.fileNameText}>{fileName}</Text>}
-              </>
-            )}
-            <TouchableOpacity 
-              style={styles.resetButton}
-              onPress={resetCapture}
-            >
-              <Text style={styles.resetButtonText}>Reset</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Classification Results */}
-        {classification && !classificationLoading && (
-          <View style={styles.classificationContainer}>
-            <Text style={styles.classificationTitle}>
-              📄 Document Type: <Text style={styles.classificationValue}>{classification}</Text>
-            </Text>
-
-            {/* Classification-specific buttons */}
-            <View style={styles.classificationButtonsContainer}>
-              {classification === 'PF Filing' && (
-                <TouchableOpacity
-                  style={[styles.classButton, styles.pfButton]}
-                  onPress={() => navigation.navigate('EPFFiling', { fileURI, fileName, isPDF })}
-                >
-                  <Text style={styles.classButtonText}>Proceed to EPF Filing</Text>
-                </TouchableOpacity>
-              )}
-
-              {classification === 'GST Filing' && (
-                <TouchableOpacity
-                  style={[styles.classButton, styles.gstButton]}
-                  onPress={() => navigation.navigate('GSTFiling', { fileURI, fileName, isPDF })}
-                >
-                  <Text style={styles.classButtonText}>Proceed to GST Filing</Text>
-                </TouchableOpacity>
-              )}
-
-              {classification === 'ITR Filing' && (
-                <TouchableOpacity
-                  style={[styles.classButton, styles.itrButton]}
-                  onPress={() => navigation.navigate('ITRFiling', { fileURI, fileName, isPDF })}
-                >
-                  <Text style={styles.classButtonText}>Proceed to ITR Filing</Text>
-                </TouchableOpacity>
-              )}
             </View>
-          </View>
-        )}
+          </TouchableOpacity>
+          
+          {/* Upload Files Card */}
+          <TouchableOpacity 
+            style={styles.card} 
+            onPress={handleDocumentPick}
+            activeOpacity={0.7}
+            disabled={isUploading || classificationLoading}
+          >
+            <View style={styles.cardContent}>
+              <SimpleIcon name="upload" size={24} color="#4B5563" />
+              <View style={styles.textContainer}>
+                <Text style={styles.cardTitle}>Upload files</Text>
+                <Text style={styles.cardDescription}>Select files from your device</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
 
-        {/* Continue Button */}
-        {fileURI && !isUploading && !classificationLoading && !classification && (
-          <View style={styles.actionContainer}>
-            <TouchableOpacity
-              style={styles.continueButton}
-              onPress={handleContinue}
-            >
-              <Text style={styles.continueButtonText}>
-                Continue with Document
+          {/* Upload Progress */}
+          {isUploading && (
+            <View style={styles.progressContainer}>
+              <Text style={styles.progressText}>Accessing file picker...</Text>
+              <ActivityIndicator size="large" color="#2563EB" />
+            </View>
+          )}
+
+          {/* Classification Loading */}
+          {classificationLoading && (
+            <View style={styles.progressContainer}>
+              <Text style={styles.progressText}>Classifying document...</Text>
+              <ActivityIndicator size="large" color="#2563EB" />
+            </View>
+          )}
+
+          {/* Display Uploaded File */}
+          {fileURI && !isUploading && (
+            <View style={styles.previewContainer}>
+              {renderPDFPreview()}
+              <TouchableOpacity 
+                style={styles.resetButton}
+                onPress={resetCapture}
+              >
+                <Text style={styles.resetButtonText}>Reset</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Classification Results */}
+          {classification && !classificationLoading && (
+            <View style={styles.classificationContainer}>
+              <Text style={styles.classificationTitle}>
+                📄 Document Type: <Text style={styles.classificationValue}>{classification}</Text>
               </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
+
+              {/* Classification-specific buttons */}
+              <View style={styles.classificationButtonsContainer}>
+                {classification === 'PF Filing' && (
+                  <TouchableOpacity
+                    style={[styles.classButton, styles.pfButton]}
+                    onPress={() => navigation.navigate('EPFFiling', { fileURI, fileName, isPDF })}
+                  >
+                    <Text style={styles.classButtonText}>Proceed to EPF Filing</Text>
+                  </TouchableOpacity>
+                )}
+
+                {classification === 'GST Filing' && (
+                  <TouchableOpacity
+                    style={[styles.classButton, styles.gstButton]}
+                    onPress={() => navigation.navigate('GSTFiling', { fileURI, fileName, isPDF })}
+                  >
+                    <Text style={styles.classButtonText}>Proceed to GST Filing</Text>
+                  </TouchableOpacity>
+                )}
+
+                {classification === 'ITR Filing' && (
+                  <TouchableOpacity
+                    style={[styles.classButton, styles.itrButton]}
+                    onPress={() => navigation.navigate('ITRFiling', { fileURI, fileName, isPDF })}
+                  >
+                    <Text style={styles.classButtonText}>Proceed to ITR Filing</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Continue Button */}
+          {fileURI && !isUploading && !classificationLoading && !classification && (
+            <View style={styles.actionContainer}>
+              <TouchableOpacity
+                style={styles.continueButton}
+                onPress={handleContinue}
+              >
+                <Text style={styles.continueButtonText}>
+                  Continue with Document
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -568,7 +677,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 20, // Reduced padding since we removed the bottom nav
+    paddingBottom: 20,
   },
   title: {
     fontSize: 20,
@@ -590,6 +699,9 @@ const styles = StyleSheet.create({
       android: {
         elevation: 2,
       },
+      web: {
+        boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
+      }
     }),
   },
   cardContent: {
@@ -628,6 +740,9 @@ const styles = StyleSheet.create({
       android: {
         elevation: 2,
       },
+      web: {
+        boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
+      }
     }),
   },
   imagePreview: {
@@ -717,6 +832,9 @@ const styles = StyleSheet.create({
       android: {
         elevation: 2,
       },
+      web: {
+        boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
+      }
     }),
   },
   classificationTitle: {
@@ -752,6 +870,66 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 16,
+  },
+  webCameraContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'black',
+    zIndex: 1000,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webCameraContent: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  videoPreview: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  webCameraControls: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 30,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'white',
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 20,
+    top: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

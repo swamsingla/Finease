@@ -3,7 +3,7 @@
     "name": "MyApp",
     "slug": "MyApp",
     "extra": {
-      "apiUrl": "http://10.2.129.159:5000/api"
+      "apiUrl": "http://192.168.167.161:5000/api"
     },
     "version": "1.0.0",
     "orientation": "portrait",
