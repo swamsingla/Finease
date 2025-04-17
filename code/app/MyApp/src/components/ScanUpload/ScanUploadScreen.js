@@ -71,7 +71,7 @@ const ScanUploadPage = () => {
       if (Platform.OS === 'web' && launchImageLibrary) {
         // For web platform, use react-native-image-picker as in the original code
         const options = {
-          mediaType: 'photo',
+          mediaType: 'mixed',
           includeBase64: false,
           maxHeight: 2000,
           maxWidth: 2000,
@@ -127,11 +127,9 @@ const ScanUploadPage = () => {
         }
         
         // Launch image picker for images
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.All,
-          allowsEditing: false,
-          quality: 0.8,
-          aspect: [4, 3],
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['image/*', 'application/pdf'],
+          copyToCacheDirectory: true,
         });
         
         setIsUploading(false);
@@ -145,21 +143,22 @@ const ScanUploadPage = () => {
           const asset = result.assets[0];
           const uri = asset.uri;
           // Determine file type from uri
-          const uriParts = uri.split('.');
-          const fileType = uriParts[uriParts.length - 1];
+          const mimeType = asset.mimeType || 'application/octet-stream';
+          const isPdf = mimeType === 'application/pdf';
           
           // Create an asset-like object for compatibility with the classify function
           const assetForClassify = {
             uri: uri,
-            type: fileType === 'pdf' ? 'application/pdf' : `image/${fileType}`,
-            fileName: `document.${fileType}`
+            type: mimeType,
+            fileName: asset.name || `document.${isPdf ? 'pdf' : 'jpg'}`
           };
           
           console.log('Selected file:', { uri, type: assetForClassify.type, name: assetForClassify.fileName });
           
           setFileURI(uri);
           setFileName(assetForClassify.fileName);
-          setIsPDF(fileType === 'pdf');
+          // FIX: Use the isPdf variable we defined above instead of the undefined fileType variable
+          setIsPDF(isPdf);
           
           // Classify the document
           classifyDocument(assetForClassify);
