@@ -4,12 +4,15 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import ViewShot from 'react-native-view-shot';
-import axios from 'axios';
 
 import EWayBillForm from './EWayBillForm';
 import EWayBillTemplate from './EWayBillTemplate';
 
+import { useAuth } from '../../context/AuthContext';
+import Constants from 'expo-constants';
+
 const EWaybillCreateScreen = ({ navigation }) => {
+  const { user, updateUser, token } = useAuth();
   const [formData, setFormData] = useState({
     generatedBy: "-",
     validFrom: "",
@@ -73,7 +76,7 @@ const EWaybillCreateScreen = ({ navigation }) => {
         <style>
           body {
             font-family: Arial, sans-serif;
-            margin: 0;
+            margin: 0;ewayBillData
             padding: 20px;
             color: #333;
           }
@@ -211,16 +214,16 @@ const EWaybillCreateScreen = ({ navigation }) => {
       setIsLoading(true);
       
       // Save to backend first
-      // try {
-      //   const response = await axios.post(
-      //     'http://localhost:5000/api/invoice/eway/create',
-      //     ewayBillData
-      //   );
-      //   console.log('E-way bill saved:', response.data);
-      // } catch (error) {
-      //   console.error('Error saving e-way bill:', error);
-      //   // Continue with PDF generation even if save fails
-      // }
+      const apiUrl = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/invoice/eway/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(ewayBillData),
+      });
+      console.log('Response from backend:', response);
 
       const htmlContent = generateHTML(ewayBillData);
       // Generate PDF file
