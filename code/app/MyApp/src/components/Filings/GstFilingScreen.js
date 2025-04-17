@@ -7,24 +7,15 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
-  Platform,
-  PermissionsAndroid
+  Platform
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Constants from 'expo-constants';
-
-// Import file system conditionally
-let FileSystem;
-let Sharing;
-let MediaLibrary;
-if (Platform.OS !== 'web') {
-  FileSystem = require('expo-file-system');
-  Sharing = require('expo-sharing');
-  MediaLibrary = require('expo-media-library');
-}
+import * as FileSystem from 'expo-file-system';
+import { shareAsync } from 'expo-sharing';
 
 const API_URL = Constants.expoConfig.extra.apiUrl || 'http://localhost:5000/api';
 
@@ -146,29 +137,39 @@ const GstFilingScreen = () => {
     }
   };
 
-  // Request storage permission (for Android)
-  const requestStoragePermission = async () => {
-    if (Platform.OS !== 'android') return true;
-    
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        {
-          title: "Storage Permission Required",
-          message: "This app needs access to your storage to download files",
-          buttonNeutral: "Ask Me Later",
-          buttonNegative: "Cancel",
-          buttonPositive: "OK"
+  // Save file using Storage Access Framework on Android or share on iOS
+  const saveFile = async (uri, filename, mimetype) => {
+    if (Platform.OS === "android") {
+      try {
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (permissions.granted) {
+          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, filename, mimetype)
+            .then(async (createdUri) => {
+              await FileSystem.writeAsStringAsync(createdUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+              Alert.alert("Success", "File saved successfully to selected location!");
+            })
+            .catch(e => {
+              console.error("Error creating file with SAF:", e);
+              Alert.alert("Error", "Could not save file. Opening share dialog instead.");
+              shareAsync(uri);
+            });
+        } else {
+          // Fallback to sharing if permissions denied
+          shareAsync(uri);
         }
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
-    } catch (err) {
-      console.error("Permission request error:", err);
-      return false;
+      } catch (err) {
+        console.error("SAF Error:", err);
+        Alert.alert("Error", "An error occurred. Opening share dialog instead.");
+        shareAsync(uri);
+      }
+    } else {
+      // iOS and Web use sharing
+      shareAsync(uri);
     }
   };
 
-  // Download the formatted data as JSON - cross-platform implementation
+  // Download the formatted data as JSON
   const downloadJSON = async () => {
     if (!formattedData) {
       Alert.alert("Error", "No formatted GST data available for download.");
@@ -179,10 +180,11 @@ const GstFilingScreen = () => {
       setDownloadLoading(true);
       const jsonString = JSON.stringify(formattedData, null, 2);
       const fileName = `gst_filing_data_${Date.now()}.json`;
+      const mimetype = 'application/json';
       
       if (Platform.OS === 'web') {
         // Web implementation - create a blob and download it
-        const blob = new Blob([jsonString], { type: 'application/json' });
+        const blob = new Blob([jsonString], { type: mimetype });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -191,76 +193,21 @@ const GstFilingScreen = () => {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
-        // No need for an alert on web as the browser handles the download UI
       } else {
         // Native (iOS/Android) implementation
+        const fileUri = FileSystem.documentDirectory + fileName;
         
-        // Request storage permission
-        const hasPermission = await requestStoragePermission();
-        if (!hasPermission) {
-          Alert.alert("Permission Denied", "Storage permission is required to download files.");
-          setDownloadLoading(false);
-          return;
-        }
-        
-        // Request media library permission
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission Denied', 'Media library permission is required to save files.');
-          setDownloadLoading(false);
-          return;
-        }
-        
-        // For Android/iOS, first save to app's internal storage
-        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-        
-        // Write the file to internal storage
+        // Write the file to app's document directory
         await FileSystem.writeAsStringAsync(fileUri, jsonString, {
           encoding: FileSystem.EncodingType.UTF8
         });
         
-        // For Android, copy file to Downloads folder for better visibility
-        if (Platform.OS === 'android') {
-          try {
-            // Create asset in media library
-            const asset = await MediaLibrary.createAssetAsync(fileUri);
-            
-            // Create "Downloads" album if it doesn't exist and add file to it
-            const album = await MediaLibrary.getAlbumAsync('Downloads');
-            if (album === null) {
-              await MediaLibrary.createAlbumAsync('Downloads', asset, false);
-            } else {
-              await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-            }
-            
-            Alert.alert(
-              "Download Complete", 
-              `File saved to Downloads folder as ${fileName}`
-            );
-          } catch (error) {
-            console.log("Error saving to downloads:", error);
-            // Fallback to sharing
-            await Sharing.shareAsync(fileUri, {
-              mimeType: 'application/json',
-              dialogTitle: 'Download GST Data',
-              UTI: 'public.json'
-            });
-          }
-        } else {
-          // For iOS and other platforms, use the sharing API
-          await Sharing.shareAsync(fileUri, {
-            mimeType: 'application/json',
-            dialogTitle: 'Download GST Data',
-            UTI: 'public.json'
-          });
-        }
-        
-        Alert.alert("Success", "GST data file has been downloaded successfully!");
+        // Save or share the file using our helper
+        await saveFile(fileUri, fileName, mimetype);
       }
     } catch (error) {
-      console.error("Error downloading JSON:", error);
-      Alert.alert("Error", `Failed to download GST data: ${error.message}`);
+      console.error("Error preparing/downloading GST JSON:", error);
+      Alert.alert("Error", `Failed to prepare GST data: ${error.message}`);
     } finally {
       setDownloadLoading(false);
     }
