@@ -12,9 +12,26 @@ import {
   ActivityIndicator,
   Dimensions
 } from 'react-native';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import Constants from 'expo-constants';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Camera } from 'expo-camera';
+
+// Import react-native-image-picker for web platform
+// We conditionally use this only on web
+let launchCamera;
+let launchImageLibrary;
+if (Platform.OS === 'web') {
+  // Dynamic import for web only
+  try {
+    const ImagePickerModule = require('react-native-image-picker');
+    launchCamera = ImagePickerModule.launchCamera;
+    launchImageLibrary = ImagePickerModule.launchImageLibrary;
+  } catch (e) {
+    console.warn('react-native-image-picker not available, web functionality may be limited');
+  }
+}
 
 // Simple text-based icon component
 const SimpleIcon = ({ name, size = 20, color = '#4B5563' }) => {
@@ -51,47 +68,105 @@ const ScanUploadPage = () => {
     setIsUploading(true);
     
     try {
-      const options = {
-        mediaType: Platform.OS === 'web' ? 'photo' : 'mixed', // Fix for web platform
-        includeBase64: false,
-        maxHeight: 2000,
-        maxWidth: 2000,
-        selectionLimit: 1,
-        type: 'library', // Explicitly set to library to ensure device files are accessible
-      };
-      
-      launchImageLibrary(options, (response) => {
+      if (Platform.OS === 'web' && launchImageLibrary) {
+        // For web platform, use react-native-image-picker as in the original code
+        const options = {
+          mediaType: 'photo',
+          includeBase64: false,
+          maxHeight: 2000,
+          maxWidth: 2000,
+          selectionLimit: 1,
+          type: 'library',
+        };
+        
+        launchImageLibrary(options, (response) => {
+          setIsUploading(false);
+          
+          if (response.didCancel) {
+            console.log('User cancelled document picker');
+            return;
+          }
+          
+          if (response.errorCode) {
+            console.error('ImagePicker Error: ', response.errorMessage);
+            Alert.alert('Error', 'Failed to pick document: ' + response.errorMessage);
+            return;
+          }
+          
+          if (response.assets && response.assets.length > 0) {
+            const asset = response.assets[0];
+            const uri = asset.uri;
+            const type = asset.type;
+            const name = asset.fileName || 'Document';
+            
+            console.log('Selected file:', { uri, type, name });
+            
+            setFileURI(uri);
+            setFileName(name);
+            setIsPDF(type && type.includes('pdf'));
+            
+            // Classify the document
+            console.log('DETAILED URI INFO:', {
+              uri: asset.uri,
+              uriStartsWith: asset.uri.substring(0, 30),
+              uriLength: asset.uri.length
+            });
+            classifyDocument(asset);
+          } else {
+            Alert.alert('Error', 'No file was selected');
+          }
+        });
+      } else {
+        // For Android with Expo Go, use Expo's ImagePicker
+        // First, request permission
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Please grant camera roll permissions to upload documents');
+          setIsUploading(false);
+          return;
+        }
+        
+        // Launch image picker for images
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.All,
+          allowsEditing: false,
+          quality: 0.8,
+          aspect: [4, 3],
+        });
+        
         setIsUploading(false);
         
-        if (response.didCancel) {
+        if (result.canceled) {
           console.log('User cancelled document picker');
           return;
         }
-        
-        if (response.errorCode) {
-          console.error('ImagePicker Error: ', response.errorMessage);
-          Alert.alert('Error', 'Failed to pick document: ' + response.errorMessage);
-          return;
-        }
-        
-        if (response.assets && response.assets.length > 0) {
-          const asset = response.assets[0];
+
+        if (result.assets && result.assets.length > 0) {
+          const asset = result.assets[0];
           const uri = asset.uri;
-          const type = asset.type;
-          const name = asset.fileName || 'Document';
+          // Determine file type from uri
+          const uriParts = uri.split('.');
+          const fileType = uriParts[uriParts.length - 1];
           
-          console.log('Selected file:', { uri, type, name });
+          // Create an asset-like object for compatibility with the classify function
+          const assetForClassify = {
+            uri: uri,
+            type: fileType === 'pdf' ? 'application/pdf' : `image/${fileType}`,
+            fileName: `document.${fileType}`
+          };
+          
+          console.log('Selected file:', { uri, type: assetForClassify.type, name: assetForClassify.fileName });
           
           setFileURI(uri);
-          setFileName(name);
-          setIsPDF(type && type.includes('pdf'));
+          setFileName(assetForClassify.fileName);
+          setIsPDF(fileType === 'pdf');
           
           // Classify the document
-          classifyDocument(asset);
+          classifyDocument(assetForClassify);
         } else {
           Alert.alert('Error', 'No file was selected');
         }
-      });
+      }
     } catch (err) {
       console.error('Error picking document:', err);
       Alert.alert('Error', 'Failed to pick document: ' + err.message);
@@ -102,39 +177,86 @@ const ScanUploadPage = () => {
   // Function to handle camera capture
   const handleCameraCapture = async () => {
     try {
-      const options = {
-        mediaType: 'photo',
-        includeBase64: false,
-        maxHeight: 2000,
-        maxWidth: 2000,
-        saveToPhotos: true,
-        quality: 0.8,
-      };
-      
-      launchCamera(options, (response) => {
-        if (response.didCancel) {
+      if (Platform.OS === 'web' && launchCamera) {
+        // Use react-native-image-picker for web as in the original code
+        const options = {
+          mediaType: 'photo',
+          includeBase64: false,
+          maxHeight: 2000,
+          maxWidth: 2000,
+          saveToPhotos: true,
+          quality: 0.8,
+        };
+        
+        launchCamera(options, (response) => {
+          if (response.didCancel) {
+            console.log('User cancelled camera');
+            return;
+          }
+          
+          if (response.errorCode) {
+            console.error('Camera Error: ', response.errorMessage);
+            Alert.alert('Error', 'Failed to capture image: ' + response.errorMessage);
+            return;
+          }
+          
+          if (response.assets && response.assets.length > 0) {
+            const asset = response.assets[0];
+            setFileURI(asset.uri);
+            setFileName('Camera_' + new Date().toISOString().split('T')[0]);
+            setIsPDF(false);
+            console.log('DETAILED URI INFO:', {
+              uri: asset.uri,
+              uriStartsWith: asset.uri.substring(0, 30),
+              uriLength: asset.uri.length
+            });
+            // Classify the document
+            classifyDocument(asset);
+          } else {
+            Alert.alert('Error', 'No image was captured');
+          }
+        });
+      } else {
+        // For Android with Expo Go, use Expo's Camera
+        // First check for camera permissions
+        const { status } = await Camera.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Please grant camera permissions to take a photo');
+          return;
+        }
+        
+        // Launch camera
+        const result = await ImagePicker.launchCameraAsync({
+          allowsEditing: false,
+          quality: 0.8,
+        });
+        
+        if (result.canceled) {
           console.log('User cancelled camera');
           return;
         }
         
-        if (response.errorCode) {
-          console.error('Camera Error: ', response.errorMessage);
-          Alert.alert('Error', 'Failed to capture image: ' + response.errorMessage);
-          return;
-        }
-        
-        if (response.assets && response.assets.length > 0) {
-          const asset = response.assets[0];
-          setFileURI(asset.uri);
-          setFileName('Camera_' + new Date().toISOString().split('T')[0]);
+        if (result.assets && result.assets.length > 0) {
+          const asset = result.assets[0];
+          const uri = asset.uri;
+          
+          // Create an asset-like object for compatibility with the classify function
+          const assetForClassify = {
+            uri: uri,
+            type: 'image/jpeg',
+            fileName: 'Camera_' + new Date().toISOString().split('T')[0] + '.jpg'
+          };
+          
+          setFileURI(uri);
+          setFileName(assetForClassify.fileName);
           setIsPDF(false);
           
           // Classify the document
-          classifyDocument(asset);
+          classifyDocument(assetForClassify);
         } else {
           Alert.alert('Error', 'No image was captured');
         }
-      });
+      }
     } catch (err) {
       console.error('Error capturing image:', err);
       Alert.alert('Error', 'Failed to capture image: ' + err.message);
@@ -215,7 +337,7 @@ const ScanUploadPage = () => {
       console.log('Sending classification request for:', asset.fileName || 'unnamed file');
       
       // Use environment variable for API URL with platform-specific fallbacks
-      const baseApiUrl = Constants.expoConfig.extra.apiUrl ||
+      const baseApiUrl = Constants.expoConfig?.extra?.apiUrl ||
         (Platform.OS === 'android'
           ? 'http://10.0.2.2:5000/api'
           : 'http://localhost:5000/api');
