@@ -1,129 +1,138 @@
 Help & FAQ
 
+---
+
 Welcome to TaxFile Support
 
 Welcome to TaxFile—the platform designed to simplify tax filing, invoice management, and financial reporting. This document provides answers to frequently asked questions and guides you through the main features of our website.
 
+---
+
 1. Getting Started
 
-How do I create an account?
+- How do I create an account?  
 To create an account, click on the “Sign Up” button on the homepage and follow the registration process. Enter your basic information, verify your email, and set a secure password.
-
-How do I log in?
+- How do I log in?  
 Once you have an account, click the “Login” button and enter your credentials. If you forget your password, use the “Forgot Password” link to reset it.
-
-How do I access my profile?
+- How do I access my profile?"
 Click on the button next to your username on the dashboard to navigate to the “Profile” section and view your account details, edit your profile, and manage your tax-related settings.
+-What if I enter the wrong email or typo during sign up?
+If you enter the wrong email, you can sign up again using the correct one. If you enter the wrong name/other details, you can use the edit profile functionality to edit your details.
+-Can I change my email address later?
+No you cannot edit your email address after creating an account. What you can do is make a new account with the new email address you want to use.
+-I forgot my password. How to reset it?
+Click on forgot password, enter your email, and follow the reset email which will be sent on the entered email.
+-Can I stay logged in on a computer?
+You can stay logged in on a device for 7 days without having to log in again.
+-How do I delete my account entirely?
+Contact us at support@taxfile.com; we will guide you through the data export and the deletion.
 
-How do I reset my password?
-If you forget your password, click on “Forgot Password” on the login screen and follow the instructions sent to your registered email.
+---
 
 2. Tax Filing
 
-What tax filing services are available?
+- What tax filing services are available?  
 Our platform allows you to file your taxes quickly and securely. You can upload your necessary documents, fill in required forms, and submit your tax filings online.
-
-How do I file taxes?
+- How do I file taxes?  
 Navigate to the “File” section from your dashboard. Follow the step-by-step instructions, upload your documents as prompted, and review your filing summary before submission.
-
-Can I track my tax filing status?
+- Can I track my tax filing status?
 Yes, you can track the status of your filings in the “Tax Reports” section on your dashboard.
+-What documents do I need before I start filing my taxes?
+Form 16, bank statements, invoices, expense proofs and other documents as per your requirements.
+-Can I edit my filing after submission?
+No, you cannot edit, but you may refile.
+-Where can I view my upcoming filing deadlines?
+You can either click on the "Upcoming Deadlines" tab on the dashboard or go to the "Notifications" section through the profile page.
+-What happens if I miss my filing deadline?
+A late fee will apply.
 
-What documents do I need to file taxes?
-You generally need your previous year's tax returns, income proofs, and relevant receipts. For specific details, refer to our detailed filing guidelines.
-
-What if my tax filing documents fail to upload?
-If your tax filing documents do not upload successfully, first ensure that the files meet the required format and size. If the issue continues, try clearing your browser cache or using a different browser. Should the problem persist, please contact our support team for further assistance.
+---
 
 3. Invoice Management
 
-How do I generate invoices?
-Navigate to the “Invoice” section and click on “Generate Invoice.” Fill in the required details and download the invoice.
-
-Can I create an e-way bill?
+- How do I generate invoices?  
+  Navigate to the “Invoice” section and click on “Generate Invoice.” Fill in the required details and download the invoice.
+- Can I create an e-way bill?
 Yes, TaxFile allows you to generate an e-way bill by selecting the “Generate E-Way Bill” option under the “Invoice” section.
-
-What if an invoice fails to upload?
-Check your internet connection and file format. If the problem persists, try again later or contact support for assistance.
-
-How can I edit or resend an invoice?
-You can edit an invoice by accessing the “Invoice History” section. Select the invoice you wish to change and use the “Edit” option; once edited, you can resend it as needed.
+- What if an invoice fails to upload?  
+  Check your internet connection and file format. If the problem persists, try again later or contact support for assistance.
+  -Which invoice fields are mandatory?
+Invoice Number, Date, Client Name, Amount, GSTIN (if applicable).
+-Can I create an E-Way Bill?
+Yes, go to the "Invoice" section and click on "Generate E-Way Bill". Fill in the required details and download the bill.
+-Can I generate EPF/ECR?
+Yes, navigate to the "Invoice" section and click on "EPF ECR Generator". Create a new batch or select and existing batch. 
+---
 
 4. Financial Reporting
 
-What financial reports are available?
-TaxFile provides detailed financial reports, including summaries of tax filings, invoice histories, and expenditure tracking. These reports help you manage your finances more efficiently.
-
-How do I access my reports?
+- What financial reports are available?  
+TaxFile provides detailed financial reports, including summaries of tax filings, invoice generation, and expenditure tracking. These reports help you manage your finances more efficiently.
+- How do I access my reports?  
 Your reports are available on the homepage of the website. You can either refer to the graphs or use the sliding window to go through your reports.
-
-Can I customize the reports?
+- Can I customize the reports?  
 Yes, you can filter and sort reports based on date, type of filing, or invoice status to view the most relevant information.
-
-Does TaxFile provide a net income summary?
+- Does TaxFile provide a net income summary?
 Yes, the dashboard displays your net income for a selected period (monthly or yearly), along with insights on tax savings and potential deductions.
+-Are the dashboard values dynamic?
+Yes, the dashboard entries are dynamic and change with every transaction/tax filing.
 
-How do I export my reports?
-You can export your reports in PDF or Excel format by clicking the “Export” button in the reports section.
+---
 
 5. Document Scanning and Uploading
 
-Can I scan and upload documents directly?
+- Can I scan and upload documents directly?
 Yes, you can use the “Scan & Upload” feature to scan physical documents using your device camera or upload existing digital copies.
-
-How does document classification work?
-The system automatically classifies uploaded documents into categories such as GST Filing, ITR Filing, and PF Filing. You will be given options to proceed with filing accordingly.
-
-What file formats are supported?
+- How does document classification work?
+The system automatically classifies uploaded documents into categories like GST Filing, ITR Filing, and PF Filing. You will be given options to proceed with filing accordingly.
+- What file formats are supported?
 We support image formats (JPG, PNG) and PDFs.
+-What if document classification fails?
+Reupload your document to be classified and try again.
+-Can I upload images from my gallery?
+Yes, click on "Scan Document" and then on "Gallery" to scan images from your gallery.
 
-What should I do if a file fails to upload?
-First, check that your file is within the supported size and format. If problems persist, try refreshing the page or contact support.
+---
 
 6. Profile Management
 
-How do I update my profile information?
+- How do I update my profile information?
 Navigate to the “Profile” section and click “Edit Profile.” Here you can update your contact information, company details (for business accounts), and other settings.
-
-Can I update my GSTIN and company name?
+- Can I update my GSTIN and company name?
 Yes, business account holders can update their GSTIN and company name through the Edit Profile section.
-
-How do I sign out of my account?
+-What fields cannot be edited after signup?
+Your email address cannot be edited after sign up.
+- How do I sign out of my account?
 Click on the “Sign Out” option in the profile section or in the navigation bar.
 
-What do I do if I notice an error in my profile information?
-Please contact our support team immediately via our live chat or email so we can correct any inaccuracies.
+---
 
 7. Chatbot and Customer Support
 
-How do I use the chatbot for support?
+- How do I use the chatbot for support?
 Click the floating chat button on the bottom right of your screen to start a conversation with our AI-powered chatbot. You can ask questions related to tax filing, invoice management, and troubleshooting.
+-What topics can the chatbot handle?
+The chatbot queries related to the navigation of the website. 
+- What if the chatbot cannot resolve my issue?
+If the chatbot is unable to assist, you can email us at support@taxfile.com.
 
-What if the chatbot cannot resolve my issue?
-If the chatbot is unable to assist, you can request to connect with a human support agent or email us at support@taxfile.com.
-
-Can I get support over the phone?
-Yes, our support team is available via phone at the number provided on the “Contact Us” page.
-
-How is the chatbot context maintained?
-During your session, the chatbot uses your last 5 messages (formatted as User: and Bot:) to provide context-aware responses.
+---
 
 8. Troubleshooting
 
-Why is my document upload failing?
-Ensure that your file meets the supported format and size criteria. If the problem continues, clear your browser cache and try again.
-
-What should I do if the system displays an error message?
+- What should I do if the system displays an error message?
 Note down the error message and try refreshing the page. If the error persists, contact our support team with the details so we can assist you promptly.
-
-What should I do if I cannot access my profile or dashboard?
+- What should I do if I cannot access my profile or dashboard?
 Ensure you are logged in with the correct credentials. If the issue persists, clear your cache or try logging in from a different browser.
-
-How do I troubleshoot slow performance?
-Check your internet connection, refresh the page, or try accessing the website at a later time. Contact support if issues continue.
+-Why is the page loading slowly or timing out?
+Check your network, try disabling VPN, or use our mobile app.
+-How do I report a bug or request a feature?
+Mail us at support@taxfile.com
 
 9. Contact Us
 
-If you need further help or have feedback, please contact our support team:
+- If you need further help or have feedback, please contact our support team:
 Email: support@taxfile.com
-Phone: [Your Support Number]
+
+Thank you for choosing TaxFile. We’re here to help make managing your taxes and finances as simple as possible.
+
