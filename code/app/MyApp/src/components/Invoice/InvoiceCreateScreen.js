@@ -9,7 +9,12 @@ import ViewShot from 'react-native-view-shot';
 import InvoiceForm from './InvoiceForm';
 import InvoiceTemplate from './InvoiceTemplate';
 
+//These are used to send data to backend
+import { useAuth } from '../../context/AuthContext';
+import Constants from 'expo-constants';
+
 const InvoiceScreen = ({ navigation }) => {
+  const { user, updateUser, token } = useAuth();
   const [formData, setFormData] = useState({
     // Initial form data
     soldBy: '',
@@ -105,11 +110,31 @@ const InvoiceScreen = ({ navigation }) => {
       invoiceData.totalTax = totalTax.toFixed(2);
       invoiceData.grandTotal = grandTotal.toFixed(2);
 
+      const backendData = {
+        ...invoiceData,
+        taxAmount: invoiceData.totalTax,
+        totalAmount: invoiceData.grandTotal,
+        netAmount: invoiceData.subtotal,
+        placeOfSupply: invoiceData.billingAddress.state || "-",
+        placeOfDelivery: invoiceData.shippingAddress.state || "-"
+      };
+
       // Show preview first
       setFormData(invoiceData);
       console.log('Invoice data for preview:', invoiceData);
       setShowPreview(true);
 
+      // Defined API_URL for backend
+      const apiUrl = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/invoice/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(backendData),
+      });
+      console.log('Response from backend:', response);
     } catch (error) {
       console.error('Error generating invoice:', error);
       Alert.alert('Error', 'Failed to generate invoice');
