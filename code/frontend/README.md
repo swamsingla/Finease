@@ -1,70 +1,170 @@
-# Getting Started with Create React App
+# Finease Web Frontend Documentation
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This document provides an overview of the frontend structure, functionality, and setup instructions for Team 2's DASS Spring 2025 Project.
 
-## Available Scripts
+## File Structure
 
-In the project directory, you can run:
+```
+frontend/
+├── public/                 # Static files
+│   ├── assets/             # Static assets
+│   │   ├── logo.png        # Logo image
+│   │   └── qr.png          # QR code image
+│   ├── images/             # Image files
+│   │   └── format1.png     # Format reference image
+│   ├── favicon.ico         # Website favicon
+│   ├── index.html          # Main HTML file
+│   ├── logo192.png         # React logo (192px)
+│   ├── logo512.png         # React logo (512px)
+│   ├── manifest.json       # Web app manifest
+│   └── robots.txt          # Search engine instructions
+├── src/                    # Source code
+│   ├── components/         # React components
+│   │   ├── Auth/           # Authentication components
+│   │   ├── Dashboard.js    # Dashboard component
+│   │   ├── EditProfile.js  # Profile editing component
+│   │   ├── Epf.js          # EPF management component
+│   │   ├── EpfEcr.js       # EPF ECR component
+│   │   ├── File.js         # File management component
+│   │   ├── FloatingChat.js # Chat support component
+│   │   ├── Gst.js          # GST management component
+│   │   ├── GstFiling.js    # GST filing component
+│   │   ├── Invoice.js      # Invoice component
+│   │   ├── invoice/        # Invoice related components
+│   │   ├── ewaybill/       # E-way bill components
+│   │   ├── Itr.js          # ITR component
+│   │   ├── ItrFiling.js    # ITR filing component
+│   │   ├── Navbar.js       # Navigation bar component
+│   │   ├── ProfilePage.js  # User profile component
+│   │   ├── Scan.js         # Document scanning component
+│   │   ├── ScanUpload.js   # Document upload component
+│   │   └── ... other components
+│   ├── context/            # React context providers
+│   │   └── AuthContext.js  # Authentication context
+│   ├── App.js              # Main App component
+│   ├── App.test.js         # App component tests
+│   ├── index.css           # Global CSS styles
+│   ├── index.js            # Entry point
+│   ├── output.css          # Compiled CSS
+│   ├── reportWebVitals.js  # Performance measurement
+│   └── setupTests.js       # Test configuration
+├── .env                    # Environment variables
+├── package.json            # Dependencies and scripts
+├── postcss.config.js       # PostCSS configuration
+├── tailwind.config.js      # Tailwind CSS configuration
+└── README.md               # This file
+```
 
-### `npm start`
+## File Descriptions
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Main Files
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **src/App.js**: Main component defining routes and application structure
+- **src/index.js**: Entry point for the React application
+- **public/index.html**: HTML template for the React application
+- **package.json**: Defines project dependencies, scripts, and metadata
 
-### `npm test`
+### Key Directories
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **public/**: Contains static files that are served directly
+- **src/components/**: Contains React components organized by feature
+- **src/context/**: Contains React context providers for state management
+- **public/assets/**: Contains static assets like logos and images
 
-### `npm run build`
+## Technology Stack
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **React**: UI library for building component-based interfaces
+- **React Router**: For navigation and routing
+- **Tailwind CSS**: Utility-first CSS framework for styling
+- **Framer Motion**: For animations and transitions
+- **Axios**: HTTP client for API requests
+- **Chart.js**: For data visualization
+- **React PDF**: For PDF generation and handling
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Setup Instructions
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Prerequisites
 
-### `npm run eject`
+- Node.js (v16 or higher)
+- npm or yarn
+- Access to backend API
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Installation
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+1. Clone the repository:
+```bash
+git clone https://github.com/your-org/dass-spring-2025-project-team-2.git
+cd dass-spring-2025-project-team-2/code/frontend
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+3. Create a `.env` file in the root directory with the following variables:
+```
+REACT_APP_API_URL=http://localhost:5000/api
+```
+**Change this to API_URL of hosted app, If required.**
 
-## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Running the Application
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Development Mode
 
-### Code Splitting
+Start the development server:
+```bash
+npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+This will launch the application in development mode at `http://localhost:3000`.
 
-### Analyzing the Bundle Size
+### Building for Production
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+To create a production build:
+```bash
+npm run build
+```
 
-### Making a Progressive Web App
+The optimized build will be available in the `build/` directory.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### Running Tests
 
-### Advanced Configuration
+To execute the test suite:
+```bash
+npm test
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Features
 
-### Deployment
+The frontend provides the following key features:
+- User authentication (login/registration)
+- Dashboard with financial overview
+- Invoice management and creation
+- E-Way Bill generation and management
+- GST filing and management
+- ITR (Income Tax Return) filing
+- EPF (Employees' Provident Fund) management
+- Document scanning and upload
+- Profile management
+- Chat support
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## Authentication
 
-### `npm run build` fails to minify
+Authentication is handled through the AuthContext provider, which manages:
+- User login state
+- JWT token storage
+- Protected route access
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## API Integration
+
+The application connects to the backend API, with the base URL configured in environment variables.
+API calls are primarily made using the Axios library, with endpoints organized by feature.
+
+## Styling
+
+The application uses:
+- Tailwind CSS for utility-based styling
+- Custom CSS in `index.css` for specific components
+- Responsive design for mobile and desktop views
