@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Camera } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
 
 // Import react-native-image-picker for web platform
 // We conditionally use this only on web
@@ -68,6 +69,7 @@ const ScanUploadPage = () => {
   const [cameraStream, setCameraStream] = useState(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const [pdfBase64, setPdfBase64] = useState(null);
   
   // Create refs for the hidden file inputs (web only)
   const fileInputRef = useRef(null);
@@ -451,6 +453,38 @@ const ScanUploadPage = () => {
     }
   };
 
+  // Add this function to convert file to base64
+  const getBase64FromFileUri = async (uri) => {
+    try {
+      // Remove 'file://' prefix if present
+      const fileUri = uri.startsWith('file://') ? uri : uri;
+      const base64 = await FileSystem.readAsStringAsync(fileUri, { 
+        encoding: FileSystem.EncodingType.Base64 
+      });
+      return `data:application/pdf;base64,${base64}`;
+    } catch (error) {
+      console.error('Error reading file as base64:', error);
+      return null;
+    }
+  };
+  
+  // Add this effect to load base64 data when a PDF is selected
+  useEffect(() => {
+    if (isPDF && fileURI && Platform.OS !== 'web') {
+      const loadBase64 = async () => {
+        try {
+          const base64Data = await getBase64FromFileUri(fileURI);
+          setPdfBase64(base64Data);
+        } catch (error) {
+          console.error('Failed to load PDF as base64:', error);
+          Alert.alert('Error', 'Could not load PDF file');
+        }
+      };
+      
+      loadBase64();
+    }
+  }, [fileURI, isPDF]);
+
   // Render PDF viewer for web
   const renderPDFPreview = () => {
     if (Platform.OS === 'web' && isPDF && fileURI) {
@@ -466,8 +500,112 @@ const ScanUploadPage = () => {
           title="PDF Preview"
         />
       );
+    } else if (isPDF && fileURI) {
+      // Mobile platforms - use base64 data if available
+      const pdfSource = Platform.OS !== 'web' ? pdfBase64 || fileURI : fileURI;
+      
+      // Use WebView with pdf.js for mobile PDF rendering
+      const pdfHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+          <style>
+            body, html { margin: 0; padding: 0; height: 100%; background-color: #F3F4F6; overflow: hidden; }
+            #viewerContainer { width: 100%; height: 100%; overflow: auto; }
+            #pdfViewer { margin: 0 auto; }
+            .loadingMessage { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; color: #4B5563; }
+          </style>
+        </head>
+        <body>
+          <div id="viewerContainer">
+            <div id="pdfViewer"></div>
+            <p class="loadingMessage">Loading PDF...</p>
+          </div>
+          <script>
+            // Set pdf.js worker source
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+            
+            // Load the PDF
+            const loadingTask = pdfjsLib.getDocument("${pdfSource}");
+            loadingTask.promise.then(function(pdf) {
+              // Hide loading message
+              document.querySelector('.loadingMessage').style.display = 'none';
+
+              // Load all pages
+              const numPages = pdf.numPages;
+              const container = document.getElementById('pdfViewer');
+              
+              for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                pdf.getPage(pageNum).then(function(page) {
+                  const viewport = page.getViewport({scale: 1.0});
+                  
+                  // Create canvas for this page
+                  const canvas = document.createElement('canvas');
+                  container.appendChild(canvas);
+                  
+                  const context = canvas.getContext('2d');
+                  canvas.height = viewport.height;
+                  canvas.width = viewport.width;
+                  
+                  // Set canvas style
+                  canvas.style.width = '100%';
+                  canvas.style.marginBottom = '10px';
+                  
+                  // Render PDF page into canvas context
+                  const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                  };
+                  
+                  page.render(renderContext);
+                });
+              }
+            }).catch(function(error) {
+              document.querySelector('.loadingMessage').textContent = 
+                'Error loading PDF: ' + (error.message || 'Unknown error');
+              console.error('PDF.js error:', error);
+            });
+          </script>
+        </body>
+        </html>
+      `;
+
+      // Add loading state for base64 conversion
+      if (Platform.OS !== 'web' && !pdfBase64) {
+        return (
+          <View style={[styles.pdfPlaceholder, {height: 450}]}>
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text style={{marginTop: 16, color: '#4B5563'}}>
+              Preparing PDF for viewing...
+            </Text>
+          </View>
+        );
+      }
+
+      return (
+        <View style={styles.pdfWebViewContainer}>
+          <WebView
+            originWhitelist={['*']}
+            source={{ html: pdfHtml }}
+            style={styles.pdfWebView}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={true}
+            renderLoading={() => (
+              <View style={styles.webViewLoading}>
+                <ActivityIndicator size="large" color="#2563EB" />
+                <Text style={styles.webViewLoadingText}>Loading PDF viewer...</Text>
+              </View>
+            )}
+            onError={(e) => console.error('WebView error:', e)}
+          />
+          {fileName && <Text style={styles.fileNameText}>{fileName}</Text>}
+        </View>
+      );
     } else if (isPDF) {
-      // Fallback for mobile or when PDF can't be embedded
+      // Fallback when no URI is available
       return (
         <View style={styles.pdfPlaceholder}>
           <SimpleIcon name="pdf" size={48} color="#2563EB" />
@@ -930,6 +1068,30 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  pdfWebViewContainer: {
+    width: '100%',
+    height: 450,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  pdfWebView: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  webViewLoading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  webViewLoadingText: {
+    marginTop: 10,
+    color: '#4B5563',
   },
 });
 
