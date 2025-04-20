@@ -42,3 +42,5 @@ The following documents have been uploaded so far:
 20. **Project Synopsis**
 
 For any further updates or access to additional resources, please refer to the status tracker or reach out to the project team.
+
+#### README for individual components have been provided in Each Component with how to run and details about files. 
